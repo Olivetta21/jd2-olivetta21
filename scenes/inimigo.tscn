@@ -1,0 +1,39 @@
+[gd_scene format=3 uid="uid://bkak52r1dhrct"]
+
+[ext_resource type="Texture2D" uid="uid://cc1nvgwfcewnj" path="res://sprites/cemiterio_brinquedos_128x128(.png" id="1_pt50e"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_m4o7o"]
+size = Vector2(14, 14)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_61lki"]
+atlas = ExtResource("1_pt50e")
+region = Rect2(0, 0, 16, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_21tsg"]
+atlas = ExtResource("1_pt50e")
+region = Rect2(16, 0, 16, 16)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_v5v4v"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_61lki")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_21tsg")
+}],
+"loop": 1,
+"name": &"walk",
+"speed": 4.0
+}]
+
+[node name="inimigo" type="CharacterBody2D" unique_id=1952051444]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1738464314]
+shape = SubResource("RectangleShape2D_m4o7o")
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=59555928]
+sprite_frames = SubResource("SpriteFrames_v5v4v")
+animation = &"walk"
+autoplay = "walk"
+frame_progress = 0.28132254

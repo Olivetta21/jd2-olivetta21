@@ -125,7 +125,7 @@ animations = [{
 "duration": 1.0,
 "texture": SubResource("AtlasTexture_1lopk")
 }, {
-"duration": 0.5,
+"duration": 1.0,
 "texture": SubResource("AtlasTexture_xgmh7")
 }],
 "loop": 1,
@@ -142,7 +142,7 @@ animations = [{
 "duration": 1.0,
 "texture": SubResource("AtlasTexture_6c6tx")
 }, {
-"duration": 0.5,
+"duration": 1.0,
 "texture": SubResource("AtlasTexture_tt4o4")
 }],
 "loop": 1,
@@ -177,6 +177,11 @@ animations = [{
 "loop": 1,
 "name": &"idle",
 "speed": 5.0
+}, {
+"frames": [],
+"loop": 1,
+"name": &"new_animation",
+"speed": 5.0
 }]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_m4o7o"]
@@ -188,17 +193,16 @@ script = ExtResource("1_uahlj")
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=655325862]
 sprite_frames = SubResource("SpriteFrames_v5v4v")
-animation = &"idle"
+animation = &"baixo"
 autoplay = "idle"
-frame_progress = 0.6655541
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1546442481]
 shape = SubResource("RectangleShape2D_m4o7o")
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=423883013]
-zoom = Vector2(3, 3)
+zoom = Vector2(2, 2)
 limit_left = 0
 limit_top = 0
-limit_right = 672
-limit_bottom = 416
+limit_right = 1024
+limit_bottom = 1024
 position_smoothing_enabled = true
