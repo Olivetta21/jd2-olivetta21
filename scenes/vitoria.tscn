@@ -1,0 +1,25 @@
+[gd_scene format=3 uid="uid://dloo8du7qe8lp"]
+
+[ext_resource type="Script" uid="uid://dnvubdge5fnpx" path="res://scripts/fim.gd" id="1_5w2qk"]
+
+[node name="Fim" type="Control" unique_id=2079129799]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_5w2qk")
+
+[node name="Label" type="Label" parent="." unique_id=992180911]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_font_sizes/font_size = 48
+text = "Você venceu!
+Enter para jogar de novo"
+horizontal_alignment = 1
+vertical_alignment = 1

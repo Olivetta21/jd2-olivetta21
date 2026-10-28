@@ -1,5 +1,6 @@
 [gd_scene format=3 uid="uid://bkak52r1dhrct"]
 
+[ext_resource type="Script" uid="uid://cfntcxkus14xp" path="res://scripts/inimigo.gd" id="1_61lki"]
 [ext_resource type="Texture2D" uid="uid://cc1nvgwfcewnj" path="res://sprites/cemiterio_brinquedos_128x128(.png" id="1_pt50e"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_m4o7o"]
@@ -27,7 +28,11 @@ animations = [{
 "speed": 4.0
 }]
 
-[node name="inimigo" type="CharacterBody2D" unique_id=1952051444]
+[node name="inimigo" type="CharacterBody2D" unique_id=1952051444 groups=["inimigo"]]
+collision_layer = 4
+collision_mask = 5
+motion_mode = 1
+script = ExtResource("1_61lki")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1738464314]
 shape = SubResource("RectangleShape2D_m4o7o")
@@ -36,4 +41,4 @@ shape = SubResource("RectangleShape2D_m4o7o")
 sprite_frames = SubResource("SpriteFrames_v5v4v")
 animation = &"walk"
 autoplay = "walk"
-frame_progress = 0.28132254
+frame_progress = 0.5967779
