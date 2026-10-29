@@ -42,4 +42,8 @@ shape = SubResource("RectangleShape2D_m4o7o")
 sprite_frames = SubResource("SpriteFrames_v5v4v")
 animation = &"walk"
 autoplay = "walk"
-frame_progress = 0.12762605
+frame_progress = 0.7736355
+
+[node name="NavigationAgent2D" type="NavigationAgent2D" parent="." unique_id=489674329]
+path_desired_distance = 4.0
+target_desired_distance = 4.0

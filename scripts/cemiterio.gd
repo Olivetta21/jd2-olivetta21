@@ -1,5 +1,6 @@
 extends Node2D
-@export var cenas_inimigo: Array[PackedScene] = []
+
+@export var inimigos: Array[InimigoChance] = []
 
 @onready var horda: Timer = $Horda
 @onready var relogio: Timer = $Relogio
@@ -7,12 +8,13 @@ extends Node2D
 @onready var texto_vida: Label = $HUD/Vida
 @onready var texto_tempo: Label = $HUD/Tempo
 
+
 func _process(_delta: float) -> void:
 	texto_vida.text = "Vida: %d" % jogador.vida
 	texto_tempo.text = "Tempo: %d" % ceil(relogio.time_left)
 
 func _on_horda_timeout() -> void:
-	var cena_inimigo : PackedScene = cenas_inimigo.pick_random()
+	var cena_inimigo := escolher_inimigo()
 	var inimigo := cena_inimigo.instantiate()
 	inimigo.global_position = $Nascedouros.get_children().pick_random().global_position
 	add_child(inimigo)
@@ -27,3 +29,22 @@ func vencer() -> void:
 
 func perder() -> void:
 	get_tree().change_scene_to_file.call_deferred("res://scenes/derrota.tscn")
+
+func escolher_inimigo() -> PackedScene:
+	var total: float = 0.0
+
+	for inimigo in inimigos:
+		total += inimigo.chance
+
+	if total <= 0.0:
+		return null
+
+	var sorteio: float = randf() * total
+
+	for inimigo in inimigos:
+		sorteio -= inimigo.chance
+
+		if sorteio < 0.0:
+			return inimigo.cena
+
+	return null
