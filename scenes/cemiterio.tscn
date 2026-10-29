@@ -51,10 +51,10 @@ position = Vector2(291, 221)
 position = Vector2(809, 264)
 
 [node name="Marker2D3" type="Marker2D" parent="Nascedouros" unique_id=1063501542]
-position = Vector2(835, 774)
+position = Vector2(879, 788)
 
 [node name="Marker2D4" type="Marker2D" parent="Nascedouros" unique_id=1741006291]
-position = Vector2(333, 739)
+position = Vector2(319, 709)
 
 [node name="Marker2D5" type="Marker2D" parent="Nascedouros" unique_id=49935499]
 position = Vector2(977, 504)

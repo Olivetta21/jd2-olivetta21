@@ -14,20 +14,20 @@ enum PlayerState {
 
 @onready var anim: AnimatedSprite2D = $AnimatedSprite2D
 @onready var ataque: Area2D = $Ataque
-@onready var golpe: ColorRect = $Ataque/Golpe
+@onready var anim_golpe: AnimatedSprite2D = $Ataque/AnimatedSprite2D
 
 var status: PlayerState = PlayerState.IDLE
 var invencivel := false
 var tempo_no_estado := 0.0
 var dano_do_ataque_aplicado := false
 
-const TEMPO_ATAQUE := 0.4
-const TEMPO_GOLPE := 0.1
 const TEMPO_HURT := 1.0
 
 func _ready() -> void:
 	anim.stop()
-	golpe.visible = false
+	anim_golpe.stop()
+	anim_golpe.visible = false
+	anim_golpe.animation_finished.connect(_on_golpe_animation_finished)
 	mudar_estado(PlayerState.IDLE)
 
 func mudar_estado(novo_estado: PlayerState) -> void:
@@ -45,13 +45,15 @@ func mudar_estado(novo_estado: PlayerState) -> void:
 			pass
 		PlayerState.ATTACK:
 			dano_do_ataque_aplicado = false
-			golpe.visible = true
+			anim_golpe.visible = true
+			anim_golpe.play("golpe")
 		PlayerState.HURT:
 			invencivel = true
 			modulate.a = 0.4
 		PlayerState.DEATH:
 			velocity = Vector2.ZERO
-			golpe.visible = false
+			anim_golpe.stop()
+			anim_golpe.visible = false
 
 func _physics_process(delta: float) -> void:
 	match status:
@@ -60,7 +62,7 @@ func _physics_process(delta: float) -> void:
 		PlayerState.MOVING:
 			estado_movendo()
 		PlayerState.ATTACK:
-			estado_atacando(delta)
+			estado_atacando()
 		PlayerState.HURT:
 			estado_ferido(delta)
 		PlayerState.DEATH:
@@ -86,19 +88,20 @@ func estado_movendo() -> void:
 	if direcao == Vector2.ZERO:
 		mudar_estado(PlayerState.IDLE)
 
-func estado_atacando(delta: float) -> void:
-	tempo_no_estado += delta
+func estado_atacando() -> void:
 	ler_direcao()
 
 	if not dano_do_ataque_aplicado:
 		aplicar_dano_do_ataque()
 		dano_do_ataque_aplicado = true
 
-	if tempo_no_estado >= TEMPO_GOLPE:
-		golpe.visible = false
-	if tempo_no_estado >= TEMPO_ATAQUE:
-		var proximo_estado := PlayerState.MOVING if Input.get_vector("left", "right", "up", "down") != Vector2.ZERO else PlayerState.IDLE
-		mudar_estado(proximo_estado)
+func _on_golpe_animation_finished() -> void:
+	if status != PlayerState.ATTACK or anim_golpe.animation != &"golpe":
+		return
+
+	anim_golpe.visible = false
+	var proximo_estado := PlayerState.MOVING if Input.get_vector("left", "right", "up", "down") != Vector2.ZERO else PlayerState.IDLE
+	mudar_estado(proximo_estado)
 
 func estado_ferido(delta: float) -> void:
 	tempo_no_estado += delta

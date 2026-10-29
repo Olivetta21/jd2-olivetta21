@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" uid="uid://b6wagcrgxbem" path="res://scripts/jogador.gd" id="1_uahlj"]
 [ext_resource type="Texture2D" uid="uid://daff3ya81046e" path="res://sprites/personagem.png" id="1_vwxko"]
+[ext_resource type="Texture2D" uid="uid://cc1nvgwfcewnj" path="res://sprites/cemiterio_brinquedos_128x128(.png" id="3_g1ob3"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_uahlj"]
 atlas = ExtResource("1_vwxko")
@@ -193,6 +194,35 @@ radius = 5.0
 [sub_resource type="CircleShape2D" id="CircleShape2D_v5v4v"]
 radius = 20.0
 
+[sub_resource type="AtlasTexture" id="AtlasTexture_hw1g5"]
+atlas = ExtResource("3_g1ob3")
+region = Rect2(0, 112, 16, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_j8dhb"]
+atlas = ExtResource("3_g1ob3")
+region = Rect2(16, 112, 16, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_lymcn"]
+atlas = ExtResource("3_g1ob3")
+region = Rect2(32, 112, 16, 16)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_m4o7o"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_hw1g5")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_j8dhb")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_lymcn")
+}],
+"loop": 0,
+"name": &"golpe",
+"speed": 30.0
+}]
+
 [node name="jogador" type="CharacterBody2D" unique_id=898078378 groups=["player"]]
 collision_layer = 2
 motion_mode = 1
@@ -215,6 +245,7 @@ limit_top = 0
 limit_right = 1024
 limit_bottom = 1024
 position_smoothing_enabled = true
+position_smoothing_speed = 4.0
 
 [node name="Hurtbox" type="Area2D" parent="." unique_id=1687190537]
 collision_layer = 0
@@ -231,10 +262,11 @@ collision_mask = 4
 position = Vector2(0, 2)
 shape = SubResource("CircleShape2D_v5v4v")
 
-[node name="Golpe" type="ColorRect" parent="Ataque" unique_id=1504487307]
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="Ataque" unique_id=57891208]
 visible = false
-offset_left = -20.0
-offset_top = -18.0
-offset_right = 20.0
-offset_bottom = 22.0
-color = Color(1, 1, 1, 0.3529412)
+position = Vector2(-2, 0)
+scale = Vector2(4, 4)
+sprite_frames = SubResource("SpriteFrames_m4o7o")
+animation = &"golpe"
+frame = 2
+frame_progress = 0.6358479
