@@ -1,6 +1,5 @@
 extends Node2D
-@export var cena_inimigo: PackedScene
-
+@export var cenas_inimigo: Array[PackedScene] = []
 
 @onready var horda: Timer = $Horda
 @onready var relogio: Timer = $Relogio
@@ -13,6 +12,7 @@ func _process(_delta: float) -> void:
 	texto_tempo.text = "Tempo: %d" % ceil(relogio.time_left)
 
 func _on_horda_timeout() -> void:
+	var cena_inimigo : PackedScene = cenas_inimigo.pick_random()
 	var inimigo := cena_inimigo.instantiate()
 	inimigo.global_position = $Nascedouros.get_children().pick_random().global_position
 	add_child(inimigo)

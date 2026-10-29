@@ -194,6 +194,7 @@ radius = 5.0
 collision_layer = 2
 motion_mode = 1
 script = ExtResource("1_uahlj")
+vida = 10
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=655325862]
 sprite_frames = SubResource("SpriteFrames_v5v4v")

@@ -1,0 +1,45 @@
+[gd_scene format=3 uid="uid://irr52n8hfpny"]
+
+[ext_resource type="Script" uid="uid://cfntcxkus14xp" path="res://scripts/inimigo.gd" id="1_a6kbn"]
+[ext_resource type="Texture2D" uid="uid://cc1nvgwfcewnj" path="res://sprites/cemiterio_brinquedos_128x128(.png" id="2_7pxyx"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_m4o7o"]
+size = Vector2(12, 12)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_id47w"]
+atlas = ExtResource("2_7pxyx")
+region = Rect2(64, 0, 16, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_qbplv"]
+atlas = ExtResource("2_7pxyx")
+region = Rect2(80, 0, 16, 16)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_v5v4v"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_id47w")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_qbplv")
+}],
+"loop": 1,
+"name": &"walk",
+"speed": 5.0
+}]
+
+[node name="inimigo_macaco" type="CharacterBody2D" unique_id=1912654021 groups=["inimigo"]]
+collision_layer = 4
+collision_mask = 5
+motion_mode = 1
+script = ExtResource("1_a6kbn")
+velocidade = 60.0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=68561735]
+shape = SubResource("RectangleShape2D_m4o7o")
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=1557675550]
+sprite_frames = SubResource("SpriteFrames_v5v4v")
+animation = &"walk"
+autoplay = "walk"
+frame_progress = 0.8691163

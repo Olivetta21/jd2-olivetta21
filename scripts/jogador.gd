@@ -5,12 +5,6 @@ extends CharacterBody2D
 var invencivel := false
 
 @onready var anim: AnimatedSprite2D = $AnimatedSprite2D
-@onready var hurtbox: Area2D = $Hurtbox
-
-func _process(_delta: float) -> void:
-	# Tem inimigo encostando em mim?
-	if not invencivel and hurtbox.has_overlapping_bodies():
-		levar_dano()
 
 func _physics_process(_delta: float) -> void:
 	var direcao = Input.get_vector("left", "right", "up", "down")
@@ -32,8 +26,11 @@ func _physics_process(_delta: float) -> void:
 		else:
 			anim.play("cima")
 
-func levar_dano() -> void:
-	vida -= 1
+func levar_dano(valor: int) -> void:
+	if invencivel:
+		return
+
+	vida -= valor
 	if vida <= 0:
 		get_tree().current_scene.perder()
 		return
