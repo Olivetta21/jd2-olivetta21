@@ -8,6 +8,7 @@ var velocidade_arremesso := Vector2.ZERO
 var morreu := false
 
 @onready var agente: NavigationAgent2D = $NavigationAgent2D
+@onready var jogador := get_tree().get_first_node_in_group("player") as Node2D
 
 func _physics_process(_delta: float) -> void:
 	if velocidade_arremesso != Vector2.ZERO:
@@ -18,11 +19,6 @@ func _physics_process(_delta: float) -> void:
 	if morreu:
 		return
 
-	var jogador := get_tree().get_first_node_in_group("player") as Node2D
-	if jogador == null:
-		return
-	
-	agente.target_position = jogador.global_position
 	var proximo := agente.get_next_path_position()
 	velocity = global_position.direction_to(proximo) * velocidade
 	move_and_slide()
@@ -47,3 +43,10 @@ func levar_golpe(dano_recebido: int) -> void:
 		get_tree().current_scene.inimigo_morreu(self)
 		await get_tree().create_timer(atraso_morte).timeout
 		queue_free()
+
+
+func _on_timer_timeout() -> void:
+	if jogador == null:
+		return
+	
+	agente.target_position = jogador.global_position
