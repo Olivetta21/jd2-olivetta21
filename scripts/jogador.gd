@@ -4,35 +4,128 @@ extends CharacterBody2D
 @export var vida: int = 3
 @export var dano: int = 1
 
-var invencivel := false
-var pode_atacar := true
+enum PlayerState {
+	IDLE,
+	MOVING,
+	ATTACK,
+	HURT,
+	DEATH
+}
 
 @onready var anim: AnimatedSprite2D = $AnimatedSprite2D
 @onready var ataque: Area2D = $Ataque
 @onready var golpe: ColorRect = $Ataque/Golpe
 
-func _physics_process(_delta: float) -> void:
-	if pode_atacar and Input.is_action_just_pressed("atacar"):
-		atacar()
+var status: PlayerState = PlayerState.IDLE
+var invencivel := false
+var tempo_no_estado := 0.0
+var dano_do_ataque_aplicado := false
 
-	var direcao = Input.get_vector("left", "right", "up", "down")
-	velocity = direcao * velocidade
+const TEMPO_ATAQUE := 0.4
+const TEMPO_GOLPE := 0.1
+const TEMPO_HURT := 1.0
+
+func _ready() -> void:
+	anim.stop()
+	golpe.visible = false
+	mudar_estado(PlayerState.IDLE)
+
+func mudar_estado(novo_estado: PlayerState) -> void:
+	if status == novo_estado and novo_estado != PlayerState.ATTACK:
+		return
+
+	status = novo_estado
+	tempo_no_estado = 0.0
+
+	match status:
+		PlayerState.IDLE:
+			velocity = Vector2.ZERO
+			anim.stop()
+		PlayerState.MOVING:
+			pass
+		PlayerState.ATTACK:
+			dano_do_ataque_aplicado = false
+			golpe.visible = true
+		PlayerState.HURT:
+			invencivel = true
+			modulate.a = 0.4
+		PlayerState.DEATH:
+			velocity = Vector2.ZERO
+			golpe.visible = false
+
+func _physics_process(delta: float) -> void:
+	match status:
+		PlayerState.IDLE:
+			estado_parado()
+		PlayerState.MOVING:
+			estado_movendo()
+		PlayerState.ATTACK:
+			estado_atacando(delta)
+		PlayerState.HURT:
+			estado_ferido(delta)
+		PlayerState.DEATH:
+			return
+
 	move_and_slide()
+
+func estado_parado() -> void:
+	if Input.is_action_just_pressed("atacar"):
+		mudar_estado(PlayerState.ATTACK)
+		return
+
+	var direcao := ler_direcao()
+	if direcao != Vector2.ZERO:
+		mudar_estado(PlayerState.MOVING)
+
+func estado_movendo() -> void:
+	if Input.is_action_just_pressed("atacar"):
+		mudar_estado(PlayerState.ATTACK)
+		return
+
+	var direcao := ler_direcao()
+	if direcao == Vector2.ZERO:
+		mudar_estado(PlayerState.IDLE)
+
+func estado_atacando(delta: float) -> void:
+	tempo_no_estado += delta
+	ler_direcao()
+
+	if not dano_do_ataque_aplicado:
+		aplicar_dano_do_ataque()
+		dano_do_ataque_aplicado = true
+
+	if tempo_no_estado >= TEMPO_GOLPE:
+		golpe.visible = false
+	if tempo_no_estado >= TEMPO_ATAQUE:
+		var proximo_estado := PlayerState.MOVING if Input.get_vector("left", "right", "up", "down") != Vector2.ZERO else PlayerState.IDLE
+		mudar_estado(proximo_estado)
+
+func estado_ferido(delta: float) -> void:
+	tempo_no_estado += delta
+	ler_direcao()
+	if tempo_no_estado >= TEMPO_HURT:
+		invencivel = false
+		modulate.a = 1.0
+		var proximo_estado := PlayerState.MOVING if Input.get_vector("left", "right", "up", "down") != Vector2.ZERO else PlayerState.IDLE
+		mudar_estado(proximo_estado)
+
+func ler_direcao() -> Vector2:
+	var direcao := Input.get_vector("left", "right", "up", "down")
+	velocity = direcao * velocidade
 
 	if direcao == Vector2.ZERO:
 		anim.stop()
-		return
-
-	if abs(direcao.x) > abs(direcao.y):
-		if direcao.x > 0:
-			anim.play("direita")
-		else:
-			anim.play("esquerda")
+	elif abs(direcao.x) > abs(direcao.y):
+		anim.play("direita" if direcao.x > 0 else "esquerda")
 	else:
-		if direcao.y > 0:
-			anim.play("baixo")
-		else:
-			anim.play("cima")
+		anim.play("baixo" if direcao.y > 0 else "cima")
+
+	return direcao
+
+func aplicar_dano_do_ataque() -> void:
+	for alvo in ataque.get_overlapping_bodies():
+		if alvo.is_in_group("inimigo") and alvo.has_method("levar_golpe"):
+			alvo.levar_golpe(dano)
 
 func levar_dano(valor: int) -> void:
 	if invencivel:
@@ -40,24 +133,7 @@ func levar_dano(valor: int) -> void:
 
 	vida -= valor
 	if vida <= 0:
+		mudar_estado(PlayerState.DEATH)
 		get_tree().current_scene.perder()
 		return
-	# Um segundo de invencibilidade, meio transparente.
-	invencivel = true
-	modulate.a = 0.4
-	await get_tree().create_timer(1.0).timeout
-	modulate.a = 1.0
-	invencivel = false
-
-func atacar() -> void:
-	for alvo in ataque.get_overlapping_bodies():
-		if not alvo.is_in_group("inimigo"):
-			continue
-		alvo.levar_golpe(dano)
-	# O clarão dura 0,1 s; o próximo golpe só sai 0,4 s depois deste.
-	pode_atacar = false
-	golpe.visible = true
-	await get_tree().create_timer(0.1).timeout
-	golpe.visible = false
-	await get_tree().create_timer(0.3).timeout
-	pode_atacar = true
+	mudar_estado(PlayerState.HURT)
