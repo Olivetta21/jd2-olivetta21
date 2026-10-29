@@ -8,9 +8,10 @@ extends Node2D
 @onready var texto_vida: Label = $HUD/Vida
 @onready var texto_tempo: Label = $HUD/Tempo
 
+var abates := 0
 
 func _process(_delta: float) -> void:
-	texto_vida.text = "Vida: %d" % jogador.vida
+	texto_vida.text = "Vida: %d Abates: %d" % [jogador.vida, abates]
 	texto_tempo.text = "Tempo: %d" % ceil(relogio.time_left)
 
 func _on_horda_timeout() -> void:
@@ -46,5 +47,7 @@ func escolher_inimigo() -> PackedScene:
 
 		if sorteio < 0.0:
 			return inimigo.cena
-
 	return null
+
+func inimigo_morreu(_inimigo: Node2D) -> void:
+	abates += 1

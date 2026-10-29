@@ -10,7 +10,7 @@
 [sub_resource type="Resource" id="Resource_a6kbn"]
 script = ExtResource("2_tbjnj")
 cena = ExtResource("3_xbdxf")
-chance = 5.0
+chance = 50.0
 metadata/_custom_type_script = "uid://m3vddknkk5df"
 
 [sub_resource type="Resource" id="Resource_7pxyx"]
@@ -45,23 +45,35 @@ position = Vector2(65, 53)
 [node name="Nascedouros" type="Node2D" parent="." unique_id=1385735258]
 
 [node name="Marker2D" type="Marker2D" parent="Nascedouros" unique_id=1706666086]
-position = Vector2(100, 50)
+position = Vector2(291, 221)
 
 [node name="Marker2D2" type="Marker2D" parent="Nascedouros" unique_id=1821374779]
-position = Vector2(110, 50)
+position = Vector2(809, 264)
 
 [node name="Marker2D3" type="Marker2D" parent="Nascedouros" unique_id=1063501542]
-position = Vector2(120, 50)
+position = Vector2(835, 774)
 
 [node name="Marker2D4" type="Marker2D" parent="Nascedouros" unique_id=1741006291]
-position = Vector2(130, 50)
+position = Vector2(333, 739)
+
+[node name="Marker2D5" type="Marker2D" parent="Nascedouros" unique_id=49935499]
+position = Vector2(977, 504)
+
+[node name="Marker2D6" type="Marker2D" parent="Nascedouros" unique_id=1212202251]
+position = Vector2(507, 979)
+
+[node name="Marker2D7" type="Marker2D" parent="Nascedouros" unique_id=1030137798]
+position = Vector2(33, 540)
+
+[node name="Marker2D8" type="Marker2D" parent="Nascedouros" unique_id=1039775545]
+position = Vector2(519, 33)
 
 [node name="Horda" type="Timer" parent="." unique_id=1627812147]
 wait_time = 2.0
 autostart = true
 
 [node name="Relogio" type="Timer" parent="." unique_id=270495787]
-wait_time = 60.0
+wait_time = 180.0
 one_shot = true
 autostart = true
 
