@@ -6,6 +6,7 @@
 [ext_resource type="Script" uid="uid://m3vddknkk5df" path="res://scripts/InimigoChance.gd" id="2_tbjnj"]
 [ext_resource type="PackedScene" uid="uid://irr52n8hfpny" path="res://scenes/inimigo_macaco.tscn" id="3_sl0ah"]
 [ext_resource type="PackedScene" uid="uid://bkak52r1dhrct" path="res://scenes/inimigo.tscn" id="3_xbdxf"]
+[ext_resource type="Script" path="res://scripts/controles_moveis.gd" id="4_controles"]
 
 [sub_resource type="Resource" id="Resource_a6kbn"]
 script = ExtResource("2_tbjnj")
@@ -78,6 +79,16 @@ one_shot = true
 autostart = true
 
 [node name="HUD" type="CanvasLayer" parent="." unique_id=2046774790]
+
+[node name="ControlesMoveis" type="Control" parent="HUD" groups=["controles_moveis"]]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+script = ExtResource("4_controles")
 
 [node name="Vida" type="Label" parent="HUD" unique_id=344254322]
 offset_right = 40.0

@@ -15,6 +15,7 @@ enum PlayerState {
 @onready var anim: AnimatedSprite2D = $AnimatedSprite2D
 @onready var ataque: Area2D = $Ataque
 @onready var anim_golpe: AnimatedSprite2D = $Ataque/AnimatedSprite2D
+@onready var controles_moveis: Control = get_tree().get_first_node_in_group("controles_moveis") as Control
 
 var status: PlayerState = PlayerState.IDLE
 var invencivel := false
@@ -71,7 +72,7 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 
 func estado_parado() -> void:
-	if Input.is_action_just_pressed("atacar"):
+	if ataque_solicitado():
 		mudar_estado(PlayerState.ATTACK)
 		return
 
@@ -80,7 +81,7 @@ func estado_parado() -> void:
 		mudar_estado(PlayerState.MOVING)
 
 func estado_movendo() -> void:
-	if Input.is_action_just_pressed("atacar"):
+	if ataque_solicitado():
 		mudar_estado(PlayerState.ATTACK)
 		return
 
@@ -100,7 +101,7 @@ func _on_golpe_animation_finished() -> void:
 		return
 
 	anim_golpe.visible = false
-	var proximo_estado := PlayerState.MOVING if Input.get_vector("left", "right", "up", "down") != Vector2.ZERO else PlayerState.IDLE
+	var proximo_estado := PlayerState.MOVING if get_direcao() != Vector2.ZERO else PlayerState.IDLE
 	mudar_estado(proximo_estado)
 
 func estado_ferido(delta: float) -> void:
@@ -109,11 +110,11 @@ func estado_ferido(delta: float) -> void:
 	if tempo_no_estado >= TEMPO_HURT:
 		invencivel = false
 		modulate.a = 1.0
-		var proximo_estado := PlayerState.MOVING if Input.get_vector("left", "right", "up", "down") != Vector2.ZERO else PlayerState.IDLE
+		var proximo_estado := PlayerState.MOVING if get_direcao() != Vector2.ZERO else PlayerState.IDLE
 		mudar_estado(proximo_estado)
 
 func ler_direcao() -> Vector2:
-	var direcao := Input.get_vector("left", "right", "up", "down")
+	var direcao := get_direcao()
 	velocity = direcao * velocidade
 
 	if direcao == Vector2.ZERO:
@@ -124,6 +125,19 @@ func ler_direcao() -> Vector2:
 		anim.play("baixo" if direcao.y > 0 else "cima")
 
 	return direcao
+
+func get_direcao() -> Vector2:
+	var direcao := Input.get_vector("left", "right", "up", "down")
+	if controles_moveis != null:
+		var direcao_toque: Vector2 = controles_moveis.get_direction()
+		if direcao_toque != Vector2.ZERO:
+			return direcao_toque
+	return direcao
+
+func ataque_solicitado() -> bool:
+	if Input.is_action_just_pressed("atacar"):
+		return true
+	return controles_moveis != null and controles_moveis.consume_attack()
 
 func aplicar_dano_do_ataque() -> void:
 	for alvo in ataque.get_overlapping_bodies():
