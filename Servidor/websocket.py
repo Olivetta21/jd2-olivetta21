@@ -40,11 +40,13 @@ class Client:
     dx: float = 0.0
     dy: float = 0.0
     last_seen: float = 0.0
+    name: str = "Jogador"
 
     def state(self) -> dict:
         return {
             "t": "player",
             "id": self.player_id,
+            "name": self.name,
             "x": self.x,
             "y": self.y,
             "dx": self.dx,
@@ -166,6 +168,9 @@ async def handler(websocket: object) -> None:
                 continue
             if message_type == "player":
                 try:
+                    name = str(message.get("name", client.name)).strip()
+                    if name:
+                        client.name = name[:20]
                     client.x = float(message.get("x", client.x))
                     client.y = float(message.get("y", client.y))
                     client.dx = max(-1.0, min(1.0, float(message.get("dx", 0.0))))
@@ -177,8 +182,8 @@ async def handler(websocket: object) -> None:
             elif message_type == "enemies" and player_id == host_id:
                 message.pop("id", None)
                 await broadcast(message, excluded=player_id)
-            elif message_type == "attack" and player_id != host_id:
-                message.pop("id", None)
+            elif message_type == "attack":
+                message["id"] = player_id
                 await broadcast(message, excluded=player_id)
             elif message_type == "damage" and player_id == host_id:
                 await broadcast(message, excluded=player_id)

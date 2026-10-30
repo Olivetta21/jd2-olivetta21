@@ -29,6 +29,10 @@ var mortes := 0
 var tempo_restante := 0.0
 var jogo_encerrado := false
 var jogador_aguardando_respawn := false
+var nome_jogador := ""
+var nome_confirmado := false
+var entrada_nome: LineEdit
+var botao_nome: Button
 var socket := WebSocketPeer.new()
 var meu_id := -1
 var sou_autoridade := false
@@ -49,6 +53,11 @@ var debug_bytes_recebidos := 0
 
 func _ready() -> void:
 	horda.stop()
+	jogador.set_physics_process(false)
+	jogador.visible = false
+	jogador.collision_layer = 0
+	jogador.collision_mask = 0
+	criar_seletor_nome()
 	tempo_restante = relogio.time_left
 	var erro := socket.connect_to_url(ENDPOINT)
 	debug_log("conectando endpoint=%s erro=%s" % [ENDPOINT, erro])
@@ -150,6 +159,9 @@ func receber_mensagem(mensagem: Dictionary) -> void:
 			if not sou_autoridade:
 				snapshot_inimigos_pendente = mensagem.get("items", [])
 		"attack":
+			var atacante = remotos.get(int(mensagem.get("id", -1)))
+			if atacante != null:
+				atacante.atacar(Vector2(float(mensagem.get("dx", 0.0)), float(mensagem.get("dy", 0.0))))
 			if sou_autoridade:
 				aplicar_ataque_remoto(Vector2(float(mensagem.get("x", 0.0)), float(mensagem.get("y", 0.0))))
 		"damage":
@@ -185,18 +197,21 @@ func definir_autoridade(valor: bool) -> void:
 				inimigo.process_mode = Node.PROCESS_MODE_DISABLED
 
 func enviar_estado_jogador() -> void:
-	if meu_id < 0:
+	if meu_id < 0 or not nome_confirmado:
 		return
 	var posicao: Vector2 = jogador.global_position
 	if posicao.distance_squared_to(ultima_posicao_jogador) < 0.04:
 		return
 	ultima_posicao_jogador = posicao
 	var direcao: Vector2 = jogador.velocity.normalized()
-	enviar({"t": "player", "x": posicao.x, "y": posicao.y, "dx": direcao.x, "dy": direcao.y})
+	enviar({"t": "player", "name": nome_jogador, "x": posicao.x, "y": posicao.y,
+		"dx": direcao.x, "dy": direcao.y})
 
 func jogador_atacou(atacante: Node2D) -> void:
-	if atacante == jogador and not sou_autoridade and not jogador_aguardando_respawn:
-		enviar({"t": "attack", "x": atacante.global_position.x, "y": atacante.global_position.y})
+	if atacante == jogador and not jogador_aguardando_respawn:
+		var direcao: Vector2 = jogador.velocity.normalized()
+		enviar({"t": "attack", "x": atacante.global_position.x, "y": atacante.global_position.y,
+			"dx": direcao.x, "dy": direcao.y})
 
 func get_alvo_inimigo(origem: Vector2) -> Node2D:
 	var alvo: Node2D = null
@@ -231,6 +246,35 @@ func jogador_morreu(alvo: Node2D) -> void:
 		jogador.renascer(posicao_inicial_jogador)
 		jogador_aguardando_respawn = false
 		enviar({"t": "respawn"})
+
+func criar_seletor_nome() -> void:
+	entrada_nome = LineEdit.new()
+	entrada_nome.placeholder_text = "Digite seu nome"
+	entrada_nome.max_length = 20
+	entrada_nome.position = Vector2(180, 150)
+	entrada_nome.size = Vector2(220, 42)
+	$HUD.add_child(entrada_nome)
+	botao_nome = Button.new()
+	botao_nome.text = "Entrar"
+	botao_nome.position = Vector2(410, 150)
+	botao_nome.size = Vector2(90, 42)
+	botao_nome.pressed.connect(confirmar_nome)
+	$HUD.add_child(botao_nome)
+	entrada_nome.grab_focus()
+
+func confirmar_nome() -> void:
+	var nome := entrada_nome.text.strip_edges()
+	if nome.is_empty():
+		return
+	nome_jogador = nome
+	nome_confirmado = true
+	entrada_nome.queue_free()
+	botao_nome.queue_free()
+	jogador.collision_layer = 2
+	jogador.collision_mask = 3
+	jogador.visible = true
+	jogador.set_physics_process(true)
+	enviar_estado_jogador()
 
 func finalizar_derrota() -> void:
 	if jogo_encerrado:
@@ -303,7 +347,8 @@ func adicionar_ou_atualizar_remoto(estado: Dictionary) -> void:
 	var humano = remotos.get(id)
 	if humano != null:
 		humano.atualizar_rede(Vector2(float(estado.get("x", 0.0)), float(estado.get("y", 0.0))),
-			Vector2(float(estado.get("dx", 0.0)), float(estado.get("dy", 0.0))))
+			Vector2(float(estado.get("dx", 0.0)), float(estado.get("dy", 0.0))),
+			str(estado.get("name", "")))
 
 func remover_remoto(id: int) -> void:
 	var humano = remotos.get(id)

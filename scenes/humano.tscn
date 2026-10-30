@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" uid="uid://ysh2ss2t8jal" path="res://scripts/humano.gd" id="1_a5l3v"]
 [ext_resource type="Texture2D" uid="uid://v50drcxrral5" path="res://sprites/personagem - Copia.png" id="1_i77h7"]
+[ext_resource type="Texture2D" uid="uid://cc1nvgwfcewnj" path="res://sprites/cemiterio_brinquedos_128x128(.png" id="2_attack"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_a5l3v"]
 atlas = ExtResource("1_i77h7")
@@ -141,6 +142,35 @@ animations = [{
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_m4o7o"]
 size = Vector2(8, 4)
 
+[sub_resource type="AtlasTexture" id="AtlasTexture_attack1"]
+atlas = ExtResource("2_attack")
+region = Rect2(0, 112, 16, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_attack2"]
+atlas = ExtResource("2_attack")
+region = Rect2(16, 112, 16, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_attack3"]
+atlas = ExtResource("2_attack")
+region = Rect2(32, 112, 16, 16)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_attack"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_attack1")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_attack2")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_attack3")
+}],
+"loop": 0,
+"name": &"golpe",
+"speed": 30.0
+}]
+
 [node name="humano" type="CharacterBody2D" unique_id=1352156195 groups=["player"]]
 motion_mode = 1
 collision_layer = 2
@@ -154,3 +184,19 @@ animation = &"esquerda"
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1245810747]
 position = Vector2(0, 6)
 shape = SubResource("RectangleShape2D_m4o7o")
+
+[node name="Nome" type="Label" parent="."]
+offset_left = -40.0
+offset_top = -24.0
+offset_right = 40.0
+offset_bottom = -4.0
+horizontal_alignment = 1
+
+[node name="Ataque" type="Node2D" parent="."]
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="Ataque"]
+visible = false
+position = Vector2(-2, 0)
+scale = Vector2(4, 4)
+sprite_frames = SubResource("SpriteFrames_attack")
+animation = &"golpe"

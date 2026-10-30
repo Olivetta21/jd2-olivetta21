@@ -35,6 +35,10 @@ de dano. A cada 5 inimigos, o dano dos jogadores aumenta 25%; esses valores
 podem ser ajustados pelas constantes `ENEMIES_PER_DAMAGE_STEP` e
 `DAMAGE_MULTIPLIER_STEP` em `scripts/cemiterio.gd`.
 
+Ao entrar, o jogador informa seu nome antes de aparecer no jogo. O nome é
+exibido acima dos jogadores remotos, e os clientes também reproduzem a
+animação de ataque dos demais jogadores.
+
 Cada jogador possui vida própria, mas as mortes são contabilizadas em um
 contador global da partida. Ao morrer, o jogador renasce na posição inicial
 após um segundo. A partida termina para todos quando o contador global
