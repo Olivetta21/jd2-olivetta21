@@ -13,8 +13,9 @@ var ataque_solicitado := false
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	mouse_filter = Control.MOUSE_FILTER_STOP
-	visible = OS.has_feature("web") or DisplayServer.is_touchscreen_available()
+	var touchscreen := DisplayServer.is_touchscreen_available()
+	mouse_filter = Control.MOUSE_FILTER_STOP if touchscreen else Control.MOUSE_FILTER_IGNORE
+	visible = touchscreen
 	_recalcular_posicoes()
 	queue_redraw()
 

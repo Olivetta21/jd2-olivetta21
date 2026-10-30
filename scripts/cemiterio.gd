@@ -22,6 +22,7 @@ const DAMAGE_MULTIPLIER_STEP := 0.25
 @onready var texto_vida: Label = $HUD/Vida
 @onready var texto_tempo: Label = $HUD/Tempo
 @onready var texto_inimigos: Label = $HUD/Inimigos
+@onready var dica_controles: Label = $HUD/DicaControles
 @onready var posicao_inicial_jogador: Vector2 = jogador.global_position
 
 var abates := 0
@@ -275,6 +276,14 @@ func confirmar_nome() -> void:
 	jogador.visible = true
 	jogador.set_physics_process(true)
 	enviar_estado_jogador()
+	mostrar_dica_controles()
+
+func mostrar_dica_controles() -> void:
+	dica_controles.text = "Controle: WASD + Espaço ou touchscreen"
+	dica_controles.visible = true
+	await get_tree().create_timer(4.0).timeout
+	if is_instance_valid(dica_controles):
+		dica_controles.visible = false
 
 func finalizar_derrota() -> void:
 	if jogo_encerrado:
