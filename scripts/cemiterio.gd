@@ -4,7 +4,8 @@ const ENDPOINT := "wss://jogos.olivetta.com.br/ws/cemiterio"
 const DEBUG_LOGGING := true
 const REMOTE_HUMAN := preload("res://scenes/humano.tscn")
 const ENEMY_SNAPSHOT_INTERVAL := 0.2
-const ENEMY_SMOOTHING_SPEED := 16.0
+const ENEMY_POSITION_CORRECTION_SPEED := 5.0
+const ENEMY_VELOCITY_SMOOTHING := 0.35
 const PLAYER_SNAPSHOT_INTERVAL := 0.05
 const HOST_HEARTBEAT_INTERVAL := 0.5
 const DEBUG_REPORT_INTERVAL := 2.0
@@ -403,7 +404,11 @@ func aplicar_snapshot_inimigos(itens: Array) -> void:
 				float(item.get("y", 0.0))
 			)
 			var anterior: Vector2 = alvos_inimigos_remotos.get(id, alvo)
-			velocidades_inimigos_remotos[id] = (alvo - anterior) / ENEMY_SNAPSHOT_INTERVAL
+			var velocidade_observada := (alvo - anterior) / ENEMY_SNAPSHOT_INTERVAL
+			var velocidade_anterior: Vector2 = velocidades_inimigos_remotos.get(id, velocidade_observada)
+			velocidades_inimigos_remotos[id] = velocidade_anterior.lerp(
+				velocidade_observada, ENEMY_VELOCITY_SMOOTHING
+			)
 			alvos_inimigos_remotos[id] = alvo
 			inimigo.vida = int(item.get("hp", 1))
 	for id in inimigos_remotos.keys():
@@ -414,7 +419,6 @@ func aplicar_snapshot_inimigos(itens: Array) -> void:
 			velocidades_inimigos_remotos.erase(id)
 
 func suavizar_inimigos_remotos(delta: float) -> void:
-	var fator := 1.0 - exp(-ENEMY_SMOOTHING_SPEED * delta)
 	for id in alvos_inimigos_remotos.keys():
 		var inimigo = inimigos_remotos.get(id)
 		if inimigo == null:
@@ -422,8 +426,9 @@ func suavizar_inimigos_remotos(delta: float) -> void:
 			continue
 		var alvo: Vector2 = alvos_inimigos_remotos[id]
 		var velocidade: Vector2 = velocidades_inimigos_remotos.get(id, Vector2.ZERO)
-		var alvo_visual := alvo + velocidade * 0.08
-		inimigo.global_position = inimigo.global_position.lerp(alvo_visual, fator)
+		var erro: Vector2 = alvo - inimigo.global_position
+		var correcao: Vector2 = erro * min(1.0, ENEMY_POSITION_CORRECTION_SPEED * delta)
+		inimigo.global_position += velocidade * delta + correcao
 
 func _on_horda_timeout() -> void:
 	if not sou_autoridade:
