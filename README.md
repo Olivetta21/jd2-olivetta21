@@ -18,6 +18,24 @@ jogador conectado controla a geração, a movimentação e o estado dos inimigos
 Se ele sair, o servidor promove o jogador conectado há mais tempo e o novo
 host continua enviando os snapshots dos inimigos.
 
+Os inimigos controlados pelo host escolhem o jogador conectado mais próximo
+como alvo, incluindo jogadores remotos. O dano contra um jogador remoto é
+encaminhado ao cliente responsável por ele. Os demais clientes interpolam e
+extrapolam levemente os snapshots dos inimigos para manter o movimento visual
+contínuo.
+
+O cliente envia um heartbeat a cada 0,5 segundo. Se o servidor não receber
+mensagens do host por 4 segundos, considera que o processo congelou e
+promove automaticamente o próximo jogador. A conexão do host antigo não é
+encerrada; ele permanece na sala, mas suas mensagens de autoridade são
+ignoradas até o fim da partida.
+
+Cada jogador possui vida própria, mas as mortes são contabilizadas em um
+contador global da partida. Ao morrer, o jogador renasce na posição inicial
+após um segundo. A partida termina para todos quando o contador global
+alcança 5 mortes. O tempo restante e a quantidade de abates também são
+compartilhados e sincronizados pelo host.
+
 ## Logs de conexão
 
 O diagnóstico pode ser ligado ou desligado diretamente no código:

@@ -7,7 +7,6 @@ extends CharacterBody2D
 
 @onready var agente: NavigationAgent2D = $NavigationAgent2D
 @onready var anim: AnimatedSprite2D = $AnimatedSprite2D
-@onready var jogador := get_tree().get_first_node_in_group("player") as Node2D
 
 enum EnemyState {
 	IDLE,
@@ -21,6 +20,7 @@ var status: EnemyState = EnemyState.IDLE
 var velocidade_arremesso := Vector2.ZERO
 var morreu := false
 var tempo_no_estado := 0.0
+var jogador: Node2D
 
 const TEMPO_ATAQUE := 0.4
 
@@ -64,6 +64,7 @@ func _physics_process(_delta: float) -> void:
 	move_and_slide()
 
 func estado_perseguindo() -> void:
+	jogador = get_tree().current_scene.get_alvo_inimigo(global_position)
 	if jogador == null:
 		mudar_estado(EnemyState.IDLE)
 		return
@@ -75,8 +76,7 @@ func estado_perseguindo() -> void:
 	else:
 		mudar_estado(EnemyState.IDLE)
 
-	var hurtbox := jogador.get_node_or_null("Hurtbox") as Area2D
-	if hurtbox != null and hurtbox.get_overlapping_bodies().has(self):
+	if global_position.distance_squared_to(jogador.global_position) <= 18.0 * 18.0:
 		mudar_estado(EnemyState.ATTACK)
 
 func estado_atacando(delta: float) -> void:
@@ -85,11 +85,10 @@ func estado_atacando(delta: float) -> void:
 		mudar_estado(EnemyState.IDLE)
 		return
 
-	var hurtbox := jogador.get_node_or_null("Hurtbox") as Area2D
-	if hurtbox == null or not hurtbox.get_overlapping_bodies().has(self):
+	if global_position.distance_squared_to(jogador.global_position) > 20.0 * 20.0:
 		mudar_estado(EnemyState.IDLE)
 	elif tempo_no_estado >= TEMPO_ATAQUE:
-		jogador.call("levar_dano", dano)
+		get_tree().current_scene.aplicar_dano_jogador(jogador, dano)
 		tempo_no_estado = 0.0
 
 func estado_arremessado(delta: float) -> void:
@@ -103,7 +102,7 @@ func levar_golpe(dano_recebido: int) -> void:
 		return
 
 	vida -= dano_recebido
-	var jogador_atual := get_tree().get_first_node_in_group("player") as Node2D
+	var jogador_atual := get_tree().current_scene.get_alvo_inimigo(global_position) as Node2D
 	if jogador_atual != null:
 		var direcao_arremesso := jogador_atual.global_position.direction_to(global_position)
 		velocidade_arremesso = direcao_arremesso * forca_arremesso

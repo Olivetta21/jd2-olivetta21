@@ -2,6 +2,7 @@ extends CharacterBody2D
 
 @export var velocidade: float = 70.0
 @export var vida: int = 3
+@export var vida_maxima: int = 3
 @export var dano: int = 1
 
 enum PlayerState {
@@ -154,6 +155,16 @@ func levar_dano(valor: int) -> void:
 	vida -= valor
 	if vida <= 0:
 		mudar_estado(PlayerState.DEATH)
-		get_tree().current_scene.perder()
+		var cena := get_tree().current_scene
+		if cena.has_method("jogador_morreu"):
+			cena.jogador_morreu(self)
 		return
+	mudar_estado(PlayerState.HURT)
+
+func renascer(posicao: Vector2) -> void:
+	vida = vida_maxima
+	global_position = posicao
+	velocity = Vector2.ZERO
+	invencivel = true
+	modulate.a = 0.4
 	mudar_estado(PlayerState.HURT)

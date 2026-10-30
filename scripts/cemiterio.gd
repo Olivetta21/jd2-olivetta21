@@ -6,7 +6,11 @@ const REMOTE_HUMAN := preload("res://scenes/humano.tscn")
 const ENEMY_SNAPSHOT_INTERVAL := 0.2
 const ENEMY_SMOOTHING_SPEED := 16.0
 const PLAYER_SNAPSHOT_INTERVAL := 0.05
+const HOST_HEARTBEAT_INTERVAL := 0.5
 const DEBUG_REPORT_INTERVAL := 2.0
+const MAX_DEATHS := 5
+const RESPAWN_DELAY := 1.0
+const GAME_STATE_INTERVAL := 0.2
 
 @export var inimigos: Array[InimigoChance] = []
 
@@ -15,17 +19,24 @@ const DEBUG_REPORT_INTERVAL := 2.0
 @onready var jogador := $jogador
 @onready var texto_vida: Label = $HUD/Vida
 @onready var texto_tempo: Label = $HUD/Tempo
+@onready var posicao_inicial_jogador: Vector2 = jogador.global_position
 
 var abates := 0
+var mortes := 0
+var tempo_restante := 0.0
+var jogo_encerrado := false
 var socket := WebSocketPeer.new()
 var meu_id := -1
 var sou_autoridade := false
 var tempo_snapshot_inimigos := 0.0
 var tempo_snapshot_jogador := 0.0
+var tempo_heartbeat := 0.0
+var tempo_snapshot_estado := 0.0
 var ultima_posicao_jogador := Vector2.INF
 var remotos: Dictionary = {}
 var inimigos_remotos: Dictionary = {}
 var alvos_inimigos_remotos: Dictionary = {}
+var velocidades_inimigos_remotos: Dictionary = {}
 var ultimo_estado_socket := -1
 var snapshot_inimigos_pendente: Array = []
 var debug_tempo_relatorio := 0.0
@@ -34,6 +45,7 @@ var debug_bytes_recebidos := 0
 
 func _ready() -> void:
 	horda.stop()
+	tempo_restante = relogio.time_left
 	var erro := socket.connect_to_url(ENDPOINT)
 	debug_log("conectando endpoint=%s erro=%s" % [ENDPOINT, erro])
 
@@ -74,6 +86,10 @@ func _process(delta: float) -> void:
 		debug_bytes_recebidos = 0
 
 	if socket.get_ready_state() == WebSocketPeer.STATE_OPEN:
+		tempo_heartbeat += delta
+		if tempo_heartbeat >= HOST_HEARTBEAT_INTERVAL:
+			tempo_heartbeat = 0.0
+			enviar({"t": "heartbeat"})
 		tempo_snapshot_jogador += delta
 		if tempo_snapshot_jogador >= PLAYER_SNAPSHOT_INTERVAL:
 			tempo_snapshot_jogador = 0.0
@@ -84,17 +100,31 @@ func _process(delta: float) -> void:
 			if tempo_snapshot_inimigos >= ENEMY_SNAPSHOT_INTERVAL:
 				tempo_snapshot_inimigos = 0.0
 				enviar_snapshot_inimigos()
+			tempo_snapshot_estado += delta
+			if tempo_snapshot_estado >= GAME_STATE_INTERVAL:
+				tempo_snapshot_estado = 0.0
+				enviar({
+					"t": "game",
+					"kills": abates,
+					"deaths": mortes,
+					"time": relogio.time_left
+				})
 
 	if not sou_autoridade:
 		suavizar_inimigos_remotos(delta)
 
 	texto_vida.text = "Vida: %d Abates: %d" % [jogador.vida, abates]
-	texto_tempo.text = "Tempo: %d" % ceil(relogio.time_left)
+	texto_tempo.text = "Tempo: %d Mortes: %d/%d" % [
+		ceil(tempo_restante), mortes, MAX_DEATHS
+	]
+	if sou_autoridade and not jogo_encerrado:
+		tempo_restante = relogio.time_left
 
 func receber_mensagem(mensagem: Dictionary) -> void:
 	match mensagem.get("t", ""):
 		"welcome":
 			meu_id = int(mensagem.get("id", -1))
+			mortes = int(mensagem.get("deaths", mortes))
 			definir_autoridade(bool(mensagem.get("host", false)))
 			for estado in mensagem.get("players", []):
 				adicionar_remoto(estado)
@@ -113,6 +143,23 @@ func receber_mensagem(mensagem: Dictionary) -> void:
 		"attack":
 			if sou_autoridade:
 				aplicar_ataque_remoto(Vector2(float(mensagem.get("x", 0.0)), float(mensagem.get("y", 0.0))))
+		"damage":
+			if int(mensagem.get("id", -1)) == meu_id:
+				jogador.levar_dano(int(mensagem.get("amount", 1)))
+		"game":
+			abates = int(mensagem.get("kills", abates))
+			mortes = int(mensagem.get("deaths", mortes))
+			tempo_restante = float(mensagem.get("time", tempo_restante))
+		"game_over":
+			if mensagem.get("result", "defeat") == "victory":
+				vencer()
+			else:
+				finalizar_derrota()
+		"death":
+			mortes = int(mensagem.get("count", mortes))
+			debug_log("jogador %d morreu total da partida=%d" % [
+				int(mensagem.get("id", -1)), mortes
+			])
 
 func definir_autoridade(valor: bool) -> void:
 	if sou_autoridade == valor:
@@ -141,6 +188,41 @@ func enviar_estado_jogador() -> void:
 func jogador_atacou(atacante: Node2D) -> void:
 	if atacante == jogador and not sou_autoridade:
 		enviar({"t": "attack", "x": atacante.global_position.x, "y": atacante.global_position.y})
+
+func get_alvo_inimigo(origem: Vector2) -> Node2D:
+	var alvo: Node2D = jogador
+	var distancia := origem.distance_squared_to(jogador.global_position)
+	for remoto in remotos.values():
+		if remoto == null or not is_instance_valid(remoto):
+			continue
+		var distancia_remota := origem.distance_squared_to(remoto.global_position)
+		if distancia_remota < distancia:
+			alvo = remoto
+			distancia = distancia_remota
+	return alvo
+
+func aplicar_dano_jogador(alvo: Node2D, dano: int) -> void:
+	if alvo == jogador:
+		jogador.levar_dano(dano)
+		return
+	var id := int(alvo.get_meta("player_id", -1))
+	if id >= 0:
+		enviar({"t": "damage", "id": id, "amount": dano})
+
+func jogador_morreu(alvo: Node2D) -> void:
+	if alvo != jogador or jogo_encerrado:
+		return
+	enviar({"t": "death"})
+	await get_tree().create_timer(RESPAWN_DELAY).timeout
+	if not jogo_encerrado and is_instance_valid(jogador):
+		jogador.renascer(posicao_inicial_jogador)
+
+func finalizar_derrota() -> void:
+	if jogo_encerrado:
+		return
+	jogo_encerrado = true
+	horda.stop()
+	get_tree().change_scene_to_file.call_deferred("res://scenes/derrota.tscn")
 
 func aplicar_ataque_remoto(posicao: Vector2) -> void:
 	for inimigo in get_tree().get_nodes_in_group("inimigo"):
@@ -179,6 +261,7 @@ func adicionar_remoto(estado: Dictionary) -> void:
 	if id >= 0 and id != meu_id and not remotos.has(id):
 		var humano := REMOTE_HUMAN.instantiate()
 		humano.name = "humano_%d" % id
+		humano.set_meta("player_id", id)
 		add_child(humano)
 		remotos[id] = humano
 	adicionar_ou_atualizar_remoto(estado)
@@ -233,16 +316,20 @@ func aplicar_snapshot_inimigos(itens: Array) -> void:
 				inimigo.global_position = Vector2(float(item.get("x", 0.0)), float(item.get("y", 0.0)))
 				inimigos_remotos[id] = inimigo
 		if inimigo != null:
-			alvos_inimigos_remotos[id] = Vector2(
+			var alvo: Vector2 = Vector2(
 				float(item.get("x", 0.0)),
 				float(item.get("y", 0.0))
 			)
+			var anterior: Vector2 = alvos_inimigos_remotos.get(id, alvo)
+			velocidades_inimigos_remotos[id] = (alvo - anterior) / ENEMY_SNAPSHOT_INTERVAL
+			alvos_inimigos_remotos[id] = alvo
 			inimigo.vida = int(item.get("hp", 1))
 	for id in inimigos_remotos.keys():
 		if not presentes.has(id):
 			inimigos_remotos[id].queue_free()
 			inimigos_remotos.erase(id)
 			alvos_inimigos_remotos.erase(id)
+			velocidades_inimigos_remotos.erase(id)
 
 func suavizar_inimigos_remotos(delta: float) -> void:
 	var fator := 1.0 - exp(-ENEMY_SMOOTHING_SPEED * delta)
@@ -252,7 +339,9 @@ func suavizar_inimigos_remotos(delta: float) -> void:
 			alvos_inimigos_remotos.erase(id)
 			continue
 		var alvo: Vector2 = alvos_inimigos_remotos[id]
-		inimigo.global_position = inimigo.global_position.lerp(alvo, fator)
+		var velocidade: Vector2 = velocidades_inimigos_remotos.get(id, Vector2.ZERO)
+		var alvo_visual := alvo + velocidade * 0.08
+		inimigo.global_position = inimigo.global_position.lerp(alvo_visual, fator)
 
 func _on_horda_timeout() -> void:
 	if not sou_autoridade:
@@ -266,7 +355,9 @@ func _on_horda_timeout() -> void:
 	horda.wait_time = max(0.5, horda.wait_time * 0.95)
 
 func _on_relogio_timeout() -> void:
-	vencer()
+	if sou_autoridade and not jogo_encerrado:
+		enviar({"t": "game_over", "result": "victory"})
+		vencer()
 
 func vencer() -> void:
 	get_tree().change_scene_to_file.call_deferred("res://scenes/vitoria.tscn")
