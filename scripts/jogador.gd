@@ -48,6 +48,9 @@ func mudar_estado(novo_estado: PlayerState) -> void:
 			dano_do_ataque_aplicado = false
 			anim_golpe.visible = true
 			anim_golpe.play("golpe")
+			var cena := get_tree().current_scene
+			if cena.has_method("jogador_atacou"):
+				cena.jogador_atacou(self)
 		PlayerState.HURT:
 			invencivel = true
 			modulate.a = 0.4

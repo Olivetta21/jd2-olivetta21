@@ -1,5 +1,13 @@
 extends Node2D
 
+const ENDPOINT := "wss://jogos.olivetta.com.br/ws/cemiterio"
+const DEBUG_LOGGING := true
+const REMOTE_HUMAN := preload("res://scenes/humano.tscn")
+const ENEMY_SNAPSHOT_INTERVAL := 0.2
+const ENEMY_SMOOTHING_SPEED := 16.0
+const PLAYER_SNAPSHOT_INTERVAL := 0.05
+const DEBUG_REPORT_INTERVAL := 2.0
+
 @export var inimigos: Array[InimigoChance] = []
 
 @onready var horda: Timer = $Horda
@@ -9,22 +17,257 @@ extends Node2D
 @onready var texto_tempo: Label = $HUD/Tempo
 
 var abates := 0
+var socket := WebSocketPeer.new()
+var meu_id := -1
+var sou_autoridade := false
+var tempo_snapshot_inimigos := 0.0
+var tempo_snapshot_jogador := 0.0
+var ultima_posicao_jogador := Vector2.INF
+var remotos: Dictionary = {}
+var inimigos_remotos: Dictionary = {}
+var alvos_inimigos_remotos: Dictionary = {}
+var ultimo_estado_socket := -1
+var snapshot_inimigos_pendente: Array = []
+var debug_tempo_relatorio := 0.0
+var debug_mensagens_recebidas := 0
+var debug_bytes_recebidos := 0
 
-func _process(_delta: float) -> void:
+func _ready() -> void:
+	horda.stop()
+	var erro := socket.connect_to_url(ENDPOINT)
+	debug_log("conectando endpoint=%s erro=%s" % [ENDPOINT, erro])
+
+func _process(delta: float) -> void:
+	socket.poll()
+	debug_tempo_relatorio += delta
+	var estado_socket := socket.get_ready_state()
+	if estado_socket != ultimo_estado_socket:
+		ultimo_estado_socket = estado_socket
+		debug_log("estado socket=%s" % nome_estado_socket(estado_socket))
+		if estado_socket == WebSocketPeer.STATE_CLOSED:
+			debug_log("socket fechado codigo=%d motivo=%s" % [
+				socket.get_close_code(), socket.get_close_reason()
+			])
+	while socket.get_available_packet_count() > 0:
+		var pacote := socket.get_packet().get_string_from_utf8()
+		var mensagem = JSON.parse_string(pacote)
+		if mensagem is Dictionary:
+			debug_mensagens_recebidas += 1
+			debug_bytes_recebidos += pacote.length()
+			receber_mensagem(mensagem)
+		else:
+			debug_log("mensagem invalida bytes=%d" % pacote.length())
+
+	if not snapshot_inimigos_pendente.is_empty() and not sou_autoridade:
+		aplicar_snapshot_inimigos(snapshot_inimigos_pendente)
+		snapshot_inimigos_pendente.clear()
+
+	if debug_tempo_relatorio >= DEBUG_REPORT_INTERVAL:
+		debug_tempo_relatorio = 0.0
+		debug_log("trafego recebido mensagens=%d bytes=%d fila=%d inimigos_remotos=%d" % [
+			debug_mensagens_recebidas,
+			debug_bytes_recebidos,
+			socket.get_available_packet_count(),
+			inimigos_remotos.size()
+		])
+		debug_mensagens_recebidas = 0
+		debug_bytes_recebidos = 0
+
+	if socket.get_ready_state() == WebSocketPeer.STATE_OPEN:
+		tempo_snapshot_jogador += delta
+		if tempo_snapshot_jogador >= PLAYER_SNAPSHOT_INTERVAL:
+			tempo_snapshot_jogador = 0.0
+			enviar_estado_jogador()
+
+		if sou_autoridade:
+			tempo_snapshot_inimigos += delta
+			if tempo_snapshot_inimigos >= ENEMY_SNAPSHOT_INTERVAL:
+				tempo_snapshot_inimigos = 0.0
+				enviar_snapshot_inimigos()
+
+	if not sou_autoridade:
+		suavizar_inimigos_remotos(delta)
+
 	texto_vida.text = "Vida: %d Abates: %d" % [jogador.vida, abates]
 	texto_tempo.text = "Tempo: %d" % ceil(relogio.time_left)
 
+func receber_mensagem(mensagem: Dictionary) -> void:
+	match mensagem.get("t", ""):
+		"welcome":
+			meu_id = int(mensagem.get("id", -1))
+			definir_autoridade(bool(mensagem.get("host", false)))
+			for estado in mensagem.get("players", []):
+				adicionar_remoto(estado)
+		"join":
+			adicionar_remoto(mensagem)
+		"leave":
+			remover_remoto(int(mensagem.get("id", -1)))
+		"player":
+			if int(mensagem.get("id", -1)) != meu_id:
+				adicionar_ou_atualizar_remoto(mensagem)
+		"host":
+			definir_autoridade(int(mensagem.get("id", -1)) == meu_id)
+		"enemies":
+			if not sou_autoridade:
+				snapshot_inimigos_pendente = mensagem.get("items", [])
+		"attack":
+			if sou_autoridade:
+				aplicar_ataque_remoto(Vector2(float(mensagem.get("x", 0.0)), float(mensagem.get("y", 0.0))))
+
+func definir_autoridade(valor: bool) -> void:
+	if sou_autoridade == valor:
+		return
+	sou_autoridade = valor
+	if sou_autoridade:
+		horda.start()
+		for inimigo in inimigos_remotos.values():
+			inimigo.process_mode = Node.PROCESS_MODE_INHERIT
+	else:
+		horda.stop()
+		for inimigo in get_tree().get_nodes_in_group("inimigo"):
+			if inimigo != null:
+				inimigo.process_mode = Node.PROCESS_MODE_DISABLED
+
+func enviar_estado_jogador() -> void:
+	if meu_id < 0:
+		return
+	var posicao: Vector2 = jogador.global_position
+	if posicao.distance_squared_to(ultima_posicao_jogador) < 0.04:
+		return
+	ultima_posicao_jogador = posicao
+	var direcao: Vector2 = jogador.velocity.normalized()
+	enviar({"t": "player", "x": posicao.x, "y": posicao.y, "dx": direcao.x, "dy": direcao.y})
+
+func jogador_atacou(atacante: Node2D) -> void:
+	if atacante == jogador and not sou_autoridade:
+		enviar({"t": "attack", "x": atacante.global_position.x, "y": atacante.global_position.y})
+
+func aplicar_ataque_remoto(posicao: Vector2) -> void:
+	for inimigo in get_tree().get_nodes_in_group("inimigo"):
+		if not inimigo.morreu and inimigo.global_position.distance_squared_to(posicao) <= 24.0 * 24.0:
+			inimigo.levar_golpe(1)
+
+func enviar(mensagem: Dictionary) -> void:
+	if socket.get_ready_state() == WebSocketPeer.STATE_OPEN:
+		var pacote := JSON.stringify(mensagem)
+		var erro := socket.send_text(pacote)
+		if erro != OK:
+			debug_log("falha envio tipo=%s erro=%s" % [mensagem.get("t", "?"), erro])
+	elif DEBUG_LOGGING:
+		debug_log("envio ignorado socket=%s tipo=%s" % [
+			nome_estado_socket(socket.get_ready_state()), mensagem.get("t", "?")
+		])
+
+func debug_log(mensagem: String) -> void:
+	if DEBUG_LOGGING:
+		print("[WS CLIENT] %s" % mensagem)
+
+func nome_estado_socket(estado: int) -> String:
+	match estado:
+		WebSocketPeer.STATE_CONNECTING:
+			return "connecting"
+		WebSocketPeer.STATE_OPEN:
+			return "open"
+		WebSocketPeer.STATE_CLOSING:
+			return "closing"
+		WebSocketPeer.STATE_CLOSED:
+			return "closed"
+	return "unknown(%d)" % estado
+
+func adicionar_remoto(estado: Dictionary) -> void:
+	var id := int(estado.get("id", -1))
+	if id >= 0 and id != meu_id and not remotos.has(id):
+		var humano := REMOTE_HUMAN.instantiate()
+		humano.name = "humano_%d" % id
+		add_child(humano)
+		remotos[id] = humano
+	adicionar_ou_atualizar_remoto(estado)
+
+func adicionar_ou_atualizar_remoto(estado: Dictionary) -> void:
+	var id := int(estado.get("id", -1))
+	if id < 0 or id == meu_id:
+		return
+	if not remotos.has(id):
+		adicionar_remoto(estado)
+	var humano = remotos.get(id)
+	if humano != null:
+		humano.atualizar_rede(Vector2(float(estado.get("x", 0.0)), float(estado.get("y", 0.0))),
+			Vector2(float(estado.get("dx", 0.0)), float(estado.get("dy", 0.0))))
+
+func remover_remoto(id: int) -> void:
+	var humano = remotos.get(id)
+	remotos.erase(id)
+	if humano != null:
+		humano.queue_free()
+
+func enviar_snapshot_inimigos() -> void:
+	var itens: Array = []
+	for inimigo in get_tree().get_nodes_in_group("inimigo"):
+		if inimigo.morreu:
+			continue
+		itens.append({
+			"id": inimigo.get_instance_id(),
+			"kind": inimigo.scene_file_path,
+			"x": inimigo.global_position.x,
+			"y": inimigo.global_position.y,
+			"hp": inimigo.vida
+		})
+	enviar({"t": "enemies", "items": itens})
+
+func aplicar_snapshot_inimigos(itens: Array) -> void:
+	var presentes := {}
+	for item in itens:
+		if not item is Dictionary:
+			continue
+		var id := int(item.get("id", -1))
+		if id < 0:
+			continue
+		presentes[id] = true
+		var inimigo = inimigos_remotos.get(id)
+		if inimigo == null:
+			var cena := load(item.get("kind", ""))
+			if cena is PackedScene:
+				inimigo = cena.instantiate()
+				add_child(inimigo)
+				inimigo.process_mode = Node.PROCESS_MODE_DISABLED
+				inimigo.global_position = Vector2(float(item.get("x", 0.0)), float(item.get("y", 0.0)))
+				inimigos_remotos[id] = inimigo
+		if inimigo != null:
+			alvos_inimigos_remotos[id] = Vector2(
+				float(item.get("x", 0.0)),
+				float(item.get("y", 0.0))
+			)
+			inimigo.vida = int(item.get("hp", 1))
+	for id in inimigos_remotos.keys():
+		if not presentes.has(id):
+			inimigos_remotos[id].queue_free()
+			inimigos_remotos.erase(id)
+			alvos_inimigos_remotos.erase(id)
+
+func suavizar_inimigos_remotos(delta: float) -> void:
+	var fator := 1.0 - exp(-ENEMY_SMOOTHING_SPEED * delta)
+	for id in alvos_inimigos_remotos.keys():
+		var inimigo = inimigos_remotos.get(id)
+		if inimigo == null:
+			alvos_inimigos_remotos.erase(id)
+			continue
+		var alvo: Vector2 = alvos_inimigos_remotos[id]
+		inimigo.global_position = inimigo.global_position.lerp(alvo, fator)
+
 func _on_horda_timeout() -> void:
+	if not sou_autoridade:
+		return
 	var cena_inimigo := escolher_inimigo()
+	if cena_inimigo == null:
+		return
 	var inimigo := cena_inimigo.instantiate()
 	inimigo.global_position = $Nascedouros.get_children().pick_random().global_position
 	add_child(inimigo)
-	# A horda aperta: cada inimigo chega um pouco mais cedo que o anterior.
 	horda.wait_time = max(0.5, horda.wait_time * 0.95)
 
 func _on_relogio_timeout() -> void:
 	vencer()
-	
+
 func vencer() -> void:
 	get_tree().change_scene_to_file.call_deferred("res://scenes/vitoria.tscn")
 
@@ -33,18 +276,13 @@ func perder() -> void:
 
 func escolher_inimigo() -> PackedScene:
 	var total: float = 0.0
-
 	for inimigo in inimigos:
 		total += inimigo.chance
-
 	if total <= 0.0:
 		return null
-
-	var sorteio: float = randf() * total
-
+	var sorteio := randf() * total
 	for inimigo in inimigos:
 		sorteio -= inimigo.chance
-
 		if sorteio < 0.0:
 			return inimigo.cena
 	return null
