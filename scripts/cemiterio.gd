@@ -281,19 +281,36 @@ func jogador_morreu(alvo: Node2D) -> void:
 		enviar({"t": "respawn"})
 
 func criar_seletor_nome() -> void:
+	var controles_moveis := get_tree().get_first_node_in_group("controles_moveis")
+	if controles_moveis != null and controles_moveis.has_method("definir_entrada_nome_ativa"):
+		controles_moveis.definir_entrada_nome_ativa(true)
 	entrada_nome = LineEdit.new()
 	entrada_nome.placeholder_text = "Digite seu nome"
 	entrada_nome.max_length = 20
+	entrada_nome.focus_mode = Control.FOCUS_ALL
+	entrada_nome.mouse_filter = Control.MOUSE_FILTER_STOP
+	entrada_nome.select_all_on_focus = true
+	entrada_nome.virtual_keyboard_enabled = true
 	entrada_nome.position = Vector2(180, 150)
 	entrada_nome.size = Vector2(220, 42)
+	entrada_nome.gui_input.connect(_ao_tocar_entrada_nome)
+	entrada_nome.text_submitted.connect(_ao_enviar_nome)
 	$HUD.add_child(entrada_nome)
 	botao_nome = Button.new()
 	botao_nome.text = "Entrar"
+	botao_nome.focus_mode = Control.FOCUS_ALL
 	botao_nome.position = Vector2(410, 150)
 	botao_nome.size = Vector2(90, 42)
 	botao_nome.pressed.connect(confirmar_nome)
 	$HUD.add_child(botao_nome)
-	entrada_nome.grab_focus()
+	entrada_nome.call_deferred("grab_focus")
+
+func _ao_tocar_entrada_nome(evento: InputEvent) -> void:
+	if evento is InputEventScreenTouch and evento.pressed:
+		entrada_nome.grab_focus()
+
+func _ao_enviar_nome(_texto: String) -> void:
+	confirmar_nome()
 
 func confirmar_nome() -> void:
 	var nome := entrada_nome.text.strip_edges()
@@ -303,6 +320,9 @@ func confirmar_nome() -> void:
 	nome_confirmado = true
 	entrada_nome.queue_free()
 	botao_nome.queue_free()
+	var controles_moveis := get_tree().get_first_node_in_group("controles_moveis")
+	if controles_moveis != null and controles_moveis.has_method("definir_entrada_nome_ativa"):
+		controles_moveis.definir_entrada_nome_ativa(false)
 	jogador.collision_layer = 2
 	jogador.collision_mask = 3
 	jogador.visible = true

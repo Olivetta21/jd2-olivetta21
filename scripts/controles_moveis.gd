@@ -10,6 +10,7 @@ var joystick_knob := Vector2.ZERO
 var joystick_touch := -1
 var attack_touch := -1
 var ataque_solicitado := false
+var entrada_nome_ativa := false
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -18,6 +19,13 @@ func _ready() -> void:
 	visible = touchscreen
 	_recalcular_posicoes()
 	queue_redraw()
+
+func definir_entrada_nome_ativa(ativa: bool) -> void:
+	entrada_nome_ativa = ativa
+	mouse_filter = Control.MOUSE_FILTER_IGNORE if ativa else (
+		Control.MOUSE_FILTER_STOP if DisplayServer.is_touchscreen_available()
+		else Control.MOUSE_FILTER_IGNORE
+	)
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_RESIZED:
