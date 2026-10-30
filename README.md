@@ -13,8 +13,10 @@ python -m pip install -r Servidor/requirements.txt
 python Servidor/websocket.py
 ```
 
-O servidor limita a sala a 40 jogadores e não simula o jogo. O primeiro
-jogador conectado controla a geração, a movimentação e o estado dos inimigos.
+O servidor limita a sala a 40 conexões e não simula o jogo. Uma conexão só
+entra na partida depois de informar um nome; o primeiro jogador ativo controla
+a geração, a movimentação e o estado dos inimigos. A partida só começa quando
+há pelo menos um jogador ativo.
 Se ele sair, o servidor promove o jogador conectado há mais tempo e o novo
 host continua enviando os snapshots dos inimigos.
 
@@ -38,6 +40,9 @@ podem ser ajustados pelas constantes `ENEMIES_PER_DAMAGE_STEP` e
 Ao entrar, o jogador informa seu nome antes de aparecer no jogo. O nome é
 exibido acima dos jogadores remotos, e os clientes também reproduzem a
 animação de ataque dos demais jogadores.
+
+O HUD exibe discretamente as últimas entradas, saídas e mortes dos jogadores
+ativos.
 
 Cada jogador possui vida própria, mas as mortes são contabilizadas em um
 contador global da partida. Ao morrer, o jogador renasce na posição inicial

@@ -41,6 +41,7 @@ class Client:
     dy: float = 0.0
     last_seen: float = 0.0
     name: str = "Jogador"
+    active: bool = False
 
     def state(self) -> dict:
         return {
@@ -63,6 +64,10 @@ dead_players: set[int] = set()
 next_id = 1
 
 
+def clientes_ativos() -> dict[int, Client]:
+    return {player_id: client for player_id, client in clients.items() if client.active}
+
+
 async def promover_host(novo_host_id: int | None, motivo: str) -> None:
     global host_id
     if novo_host_id is None or novo_host_id not in clients or novo_host_id == host_id:
@@ -76,12 +81,13 @@ async def promover_host(novo_host_id: int | None, motivo: str) -> None:
 async def host_watchdog() -> None:
     while True:
         await asyncio.sleep(HOST_WATCHDOG_INTERVAL)
-        if not clients:
+        ativos = clientes_ativos()
+        if not ativos:
             continue
-        if host_id is None or host_id not in clients:
-            await promover_host(min(clients), "host ausente")
+        if host_id is None or host_id not in ativos:
+            await promover_host(min(ativos), "host ausente")
             continue
-        host = clients[host_id]
+        host = ativos[host_id]
         elapsed = time.monotonic() - host.last_seen
         if elapsed > HOST_TIMEOUT_SECONDS:
             logger.warning(
@@ -89,7 +95,7 @@ async def host_watchdog() -> None:
                 host.player_id,
                 elapsed,
             )
-            candidatos = [player_id for player_id in clients if player_id != host_id]
+            candidatos = [player_id for player_id in ativos if player_id != host_id]
             if candidatos:
                 await promover_host(min(candidatos), "host sem heartbeat")
 
@@ -135,20 +141,18 @@ async def handler(websocket: object) -> None:
         total_kills = 0
         game_over = False
         dead_players.clear()
-        host_id = player_id
     clients[player_id] = client
     logger.info("cliente conectado id=%d caminho=%s jogadores=%d host=%s",
-                player_id, request_path, len(clients), player_id == host_id)
+                player_id, request_path, len(clients), False)
     await send(websocket, {
         "t": "welcome",
         "id": player_id,
-        "host": player_id == host_id,
+        "host": False,
         "deaths": total_deaths,
         "kills": total_kills,
         "players": [other.state() for other_id, other in clients.items()
-                    if other_id != player_id],
+                    if other_id != player_id and other.active],
     })
-    await broadcast(client.state(), excluded=player_id)
     if game_over:
         await send(websocket, {"t": "game_over", "result": "defeat"})
 
@@ -166,7 +170,41 @@ async def handler(websocket: object) -> None:
             message_type = message.get("t")
             if message_type == "heartbeat":
                 continue
-            if message_type == "player":
+            if message_type == "set_name":
+                nome = str(message.get("name", "")).strip()[:20]
+                if not nome:
+                    logger.warning("nome vazio rejeitado id=%d", player_id)
+                    continue
+                iniciar_nova_partida = not clientes_ativos()
+                if iniciar_nova_partida:
+                    total_deaths = 0
+                    total_kills = 0
+                    game_over = False
+                    dead_players.clear()
+                tornou_ativo = not client.active
+                client.name = nome
+                client.active = True
+                if host_id is None or host_id not in clientes_ativos():
+                    host_id = player_id
+                if tornou_ativo:
+                    logger.info("jogador ativo id=%d nome=%s host=%s",
+                                player_id, client.name, player_id == host_id)
+                    ativos = clientes_ativos()
+                    await send(websocket, {
+                        "t": "activated",
+                        "id": player_id,
+                        "host": player_id == host_id,
+                        "deaths": total_deaths,
+                        "kills": total_kills,
+                        "players": [other.state() for other_id, other in ativos.items()
+                                    if other_id != player_id],
+                    })
+                    await broadcast(client.state(), excluded=player_id)
+                    await broadcast({"t": "notice", "kind": "join", "name": client.name},
+                                    excluded=player_id)
+                    await broadcast({"t": "host", "id": host_id})
+                continue
+            if message_type == "player" and client.active:
                 try:
                     name = str(message.get("name", client.name)).strip()
                     if name:
@@ -179,17 +217,17 @@ async def handler(websocket: object) -> None:
                     logger.warning("estado de jogador invalido id=%d", player_id)
                     continue
                 await broadcast(client.state(), excluded=player_id)
-            elif message_type == "enemies" and player_id == host_id:
+            elif message_type == "enemies" and client.active and player_id == host_id:
                 message.pop("id", None)
                 await broadcast(message, excluded=player_id)
-            elif message_type == "attack":
+            elif message_type == "attack" and client.active:
                 message["id"] = player_id
                 await broadcast(message, excluded=player_id)
-            elif message_type == "damage" and player_id == host_id:
+            elif message_type == "damage" and client.active and player_id == host_id:
                 await broadcast(message, excluded=player_id)
-            elif message_type == "respawn":
+            elif message_type == "respawn" and client.active:
                 dead_players.discard(player_id)
-            elif message_type == "death" and not game_over and player_id not in dead_players:
+            elif message_type == "death" and client.active and not game_over and player_id not in dead_players:
                 dead_players.add(player_id)
                 total_deaths += 1
                 logger.info("morte registrada id=%d total da partida=%d/%d",
@@ -197,19 +235,27 @@ async def handler(websocket: object) -> None:
                 await broadcast({
                     "t": "death",
                     "id": player_id,
+                    "name": client.name,
                     "count": total_deaths,
                 })
+                await broadcast({
+                    "t": "game",
+                    "kills": total_kills,
+                    "deaths": total_deaths,
+                })
+                await broadcast({"t": "notice", "kind": "death", "name": client.name})
                 if total_deaths >= MAX_DEATHS:
                     game_over = True
                     await broadcast({"t": "game_over", "result": "defeat", "id": player_id})
-            elif message_type == "kill" and player_id == host_id:
+            elif message_type == "kill" and client.active and player_id == host_id:
                 total_kills += 1
                 logger.debug("abate registrado pelo host id=%d total=%d", player_id, total_kills)
                 await broadcast({"t": "game", "kills": total_kills})
-            elif message_type == "game" and player_id == host_id:
+            elif message_type == "game" and client.active and player_id == host_id:
                 message["kills"] = total_kills
+                message["deaths"] = total_deaths
                 await broadcast(message)
-            elif message_type == "game_over" and player_id == host_id:
+            elif message_type == "game_over" and client.active and player_id == host_id:
                 await broadcast(message, excluded=player_id)
             else:
                 logger.debug("mensagem ignorada id=%d tipo=%s", player_id, message_type)
@@ -224,11 +270,14 @@ async def handler(websocket: object) -> None:
         close_reason = getattr(websocket, "close_reason", None)
         logger.info("cliente desconectado id=%d codigo=%s motivo=%s jogadores=%d",
                     player_id, close_code, close_reason, len(clients))
-        await broadcast({"t": "leave", "id": player_id})
+        if client.active:
+            await broadcast({"t": "leave", "id": player_id})
+            await broadcast({"t": "notice", "kind": "leave", "name": client.name})
         if player_id == host_id:
             host_id = None
-            if clients:
-                await promover_host(min(clients), "host desconectado")
+            ativos = clientes_ativos()
+            if ativos:
+                await promover_host(min(ativos), "host desconectado")
         if not clients:
             host_id = None
             total_deaths = 0

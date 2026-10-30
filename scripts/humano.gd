@@ -16,6 +16,9 @@ func _ready() -> void:
 	anim_ataque.animation_finished.connect(_on_ataque_finished)
 	anim_ataque.visible = false
 
+func get_nome() -> String:
+	return nome
+
 func atualizar_rede(posicao: Vector2, direcao: Vector2, nome_recebido: String = "") -> void:
 	velocidade_rede = (posicao - alvo_posicao) / 0.05
 	alvo_posicao = posicao

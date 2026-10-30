@@ -122,5 +122,13 @@ theme_override_colors/font_color = Color(1, 1, 1, 0.9)
 theme_override_font_sizes/font_size = 20
 horizontal_alignment = 1
 
+[node name="RegistroEventos" type="Label" parent="HUD"]
+offset_left = 8.0
+offset_top = 300.0
+offset_right = 260.0
+offset_bottom = 378.0
+theme_override_colors/font_color = Color(1, 1, 1, 0.65)
+theme_override_font_sizes/font_size = 13
+
 [connection signal="timeout" from="Horda" to="." method="_on_horda_timeout"]
 [connection signal="timeout" from="Relogio" to="." method="_on_relogio_timeout"]

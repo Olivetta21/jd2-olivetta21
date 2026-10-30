@@ -24,6 +24,7 @@ const DAMAGE_MULTIPLIER_STEP := 0.25
 @onready var texto_tempo: Label = $HUD/Tempo
 @onready var texto_inimigos: Label = $HUD/Inimigos
 @onready var dica_controles: Label = $HUD/DicaControles
+@onready var registro_eventos: Label = $HUD/RegistroEventos
 @onready var posicao_inicial_jogador: Vector2 = jogador.global_position
 
 var abates := 0
@@ -52,9 +53,12 @@ var snapshot_inimigos_pendente: Array = []
 var debug_tempo_relatorio := 0.0
 var debug_mensagens_recebidas := 0
 var debug_bytes_recebidos := 0
+var eventos_recentes: Array[String] = []
+var partida_iniciada := false
 
 func _ready() -> void:
 	horda.stop()
+	relogio.stop()
 	jogador.set_physics_process(false)
 	jogador.visible = false
 	jogador.collision_layer = 0
@@ -145,18 +149,42 @@ func receber_mensagem(mensagem: Dictionary) -> void:
 			meu_id = int(mensagem.get("id", -1))
 			mortes = int(mensagem.get("deaths", mortes))
 			abates = int(mensagem.get("kills", abates))
-			definir_autoridade(bool(mensagem.get("host", false)))
 			for estado in mensagem.get("players", []):
 				adicionar_remoto(estado)
+		"activated":
+			meu_id = int(mensagem.get("id", meu_id))
+			mortes = int(mensagem.get("deaths", mortes))
+			abates = int(mensagem.get("kills", abates))
+			definir_autoridade(bool(mensagem.get("host", false)))
+			iniciar_partida()
+			for estado in mensagem.get("players", []):
+				adicionar_remoto(estado)
+			adicionar_evento("Você entrou na partida.")
+			if mensagem.get("host", false):
+				adicionar_evento("Você iniciou a partida.")
 		"join":
 			adicionar_remoto(mensagem)
+			adicionar_evento("%s entrou." % str(mensagem.get("name", "Jogador")))
 		"leave":
+			var nome_saida := nome_remoto(int(mensagem.get("id", -1)))
 			remover_remoto(int(mensagem.get("id", -1)))
+			adicionar_evento("%s saiu." % nome_saida)
 		"player":
 			if int(mensagem.get("id", -1)) != meu_id:
 				adicionar_ou_atualizar_remoto(mensagem)
 		"host":
 			definir_autoridade(int(mensagem.get("id", -1)) == meu_id)
+			if int(mensagem.get("id", -1)) == meu_id:
+				adicionar_evento("Você agora controla a partida.")
+		"notice":
+			var nome_evento := str(mensagem.get("name", "Jogador"))
+			match mensagem.get("kind", ""):
+				"join":
+					adicionar_evento("%s entrou." % nome_evento)
+				"leave":
+					adicionar_evento("%s saiu." % nome_evento)
+				"death":
+					adicionar_evento("%s morreu." % nome_evento)
 		"enemies":
 			if not sou_autoridade:
 				snapshot_inimigos_pendente = mensagem.get("items", [])
@@ -180,9 +208,6 @@ func receber_mensagem(mensagem: Dictionary) -> void:
 				finalizar_derrota()
 		"death":
 			mortes = int(mensagem.get("count", mortes))
-			debug_log("jogador %d morreu total da partida=%d" % [
-				int(mensagem.get("id", -1)), mortes
-			])
 
 func definir_autoridade(valor: bool) -> void:
 	if sou_autoridade == valor:
@@ -197,6 +222,12 @@ func definir_autoridade(valor: bool) -> void:
 		for inimigo in get_tree().get_nodes_in_group("inimigo"):
 			if inimigo != null:
 				inimigo.process_mode = Node.PROCESS_MODE_DISABLED
+
+func iniciar_partida() -> void:
+	if partida_iniciada:
+		return
+	partida_iniciada = true
+	relogio.start()
 
 func enviar_estado_jogador() -> void:
 	if meu_id < 0 or not nome_confirmado:
@@ -276,8 +307,23 @@ func confirmar_nome() -> void:
 	jogador.collision_mask = 3
 	jogador.visible = true
 	jogador.set_physics_process(true)
+	enviar({"t": "set_name", "name": nome_jogador})
 	enviar_estado_jogador()
 	mostrar_dica_controles()
+
+func nome_remoto(id: int) -> String:
+	var humano = remotos.get(id)
+	if humano != null and humano.has_method("get_nome"):
+		var nome: String = humano.get_nome()
+		if nome != "":
+			return nome
+	return "Jogador %d" % id
+
+func adicionar_evento(texto: String) -> void:
+	eventos_recentes.push_front(texto)
+	if eventos_recentes.size() > 5:
+		eventos_recentes.pop_back()
+	registro_eventos.text = "\n".join(eventos_recentes)
 
 func mostrar_dica_controles() -> void:
 	dica_controles.text = "Controle: WASD + Espaço ou touchscreen"
