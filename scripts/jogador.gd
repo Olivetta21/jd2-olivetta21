@@ -153,9 +153,13 @@ func ataque_solicitado() -> bool:
 	return controles_moveis != null and controles_moveis.consume_attack()
 
 func aplicar_dano_do_ataque() -> void:
+	var dano_atual := dano
+	var cena := get_tree().current_scene
+	if cena.has_method("calcular_dano_jogador"):
+		dano_atual = cena.calcular_dano_jogador(dano)
 	for alvo in ataque.get_overlapping_bodies():
 		if alvo.is_in_group("inimigo") and alvo.has_method("levar_golpe"):
-			alvo.levar_golpe(dano)
+			alvo.levar_golpe(dano_atual)
 
 func levar_dano(valor: int) -> void:
 	if invencivel or em_respawn or status == PlayerState.DEATH:

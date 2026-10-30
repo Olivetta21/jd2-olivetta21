@@ -6,18 +6,24 @@
 [ext_resource type="Script" uid="uid://m3vddknkk5df" path="res://scripts/InimigoChance.gd" id="2_tbjnj"]
 [ext_resource type="PackedScene" uid="uid://irr52n8hfpny" path="res://scenes/inimigo_macaco.tscn" id="3_sl0ah"]
 [ext_resource type="PackedScene" uid="uid://bkak52r1dhrct" path="res://scenes/inimigo.tscn" id="3_xbdxf"]
-[ext_resource type="Script" path="res://scripts/controles_moveis.gd" id="4_controles"]
+[ext_resource type="Script" uid="uid://bneh0wiwh4p5u" path="res://scripts/controles_moveis.gd" id="4_controles"]
+[ext_resource type="PackedScene" uid="uid://bu37ty0ivh5yb" path="res://scenes/inimigo_ursogrande.tscn" id="5_tsdcv"]
 
 [sub_resource type="Resource" id="Resource_a6kbn"]
 script = ExtResource("2_tbjnj")
 cena = ExtResource("3_xbdxf")
-chance = 50.0
+chance = 45.0
 metadata/_custom_type_script = "uid://m3vddknkk5df"
 
 [sub_resource type="Resource" id="Resource_7pxyx"]
 script = ExtResource("2_tbjnj")
 cena = ExtResource("3_sl0ah")
-chance = 50.0
+chance = 45.0
+metadata/_custom_type_script = "uid://m3vddknkk5df"
+
+[sub_resource type="Resource" id="Resource_8mfcn"]
+script = ExtResource("2_tbjnj")
+cena = ExtResource("5_tsdcv")
 metadata/_custom_type_script = "uid://m3vddknkk5df"
 
 [sub_resource type="NavigationPolygon" id="NavigationPolygon_v5v4v"]
@@ -27,7 +33,7 @@ outlines = Array[PackedVector2Array]([PackedVector2Array(7, 5, 1014, 6, 1014, 10
 
 [node name="Cemiterio" type="Node2D" unique_id=2035973065]
 script = ExtResource("1_xbdxf")
-inimigos = Array[ExtResource("2_tbjnj")]([SubResource("Resource_a6kbn"), SubResource("Resource_7pxyx")])
+inimigos = Array[ExtResource("2_tbjnj")]([SubResource("Resource_a6kbn"), SubResource("Resource_7pxyx"), SubResource("Resource_8mfcn")])
 
 [node name="Navegacao" type="NavigationRegion2D" parent="." unique_id=470759307]
 navigation_polygon = SubResource("NavigationPolygon_v5v4v")
@@ -80,14 +86,13 @@ autostart = true
 
 [node name="HUD" type="CanvasLayer" parent="." unique_id=2046774790]
 
-[node name="ControlesMoveis" type="Control" parent="HUD" groups=["controles_moveis"]]
+[node name="ControlesMoveis" type="Control" parent="HUD" unique_id=99833519 groups=["controles_moveis"]]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-mouse_filter = 0
 script = ExtResource("4_controles")
 
 [node name="Vida" type="Label" parent="HUD" unique_id=344254322]
@@ -96,10 +101,16 @@ offset_bottom = 23.0
 theme_override_font_sizes/font_size = 32
 
 [node name="Tempo" type="Label" parent="HUD" unique_id=1428804076]
-offset_top = 24.0
+offset_top = 27.0
 offset_right = 40.0
-offset_bottom = 69.0
+offset_bottom = 72.0
 theme_override_font_sizes/font_size = 32
+
+[node name="Inimigos" type="Label" parent="HUD" unique_id=1117006349]
+offset_top = 60.0
+offset_right = 300.0
+offset_bottom = 91.0
+theme_override_font_sizes/font_size = 22
 
 [connection signal="timeout" from="Horda" to="." method="_on_horda_timeout"]
 [connection signal="timeout" from="Relogio" to="." method="_on_relogio_timeout"]

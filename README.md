@@ -30,6 +30,11 @@ promove automaticamente o próximo jogador. A conexão do host antigo não é
 encerrada; ele permanece na sala, mas suas mensagens de autoridade são
 ignoradas até o fim da partida.
 
+O HUD também exibe a quantidade de inimigos vivos no mapa e o multiplicador
+de dano. A cada 5 inimigos, o dano dos jogadores aumenta 25%; esses valores
+podem ser ajustados pelas constantes `ENEMIES_PER_DAMAGE_STEP` e
+`DAMAGE_MULTIPLIER_STEP` em `scripts/cemiterio.gd`.
+
 Cada jogador possui vida própria, mas as mortes são contabilizadas em um
 contador global da partida. Ao morrer, o jogador renasce na posição inicial
 após um segundo. A partida termina para todos quando o contador global

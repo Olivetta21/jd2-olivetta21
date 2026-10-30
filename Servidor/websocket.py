@@ -54,6 +54,7 @@ class Client:
 
 clients: dict[int, Client] = {}
 total_deaths = 0
+total_kills = 0
 game_over = False
 host_id: int | None = None
 dead_players: set[int] = set()
@@ -67,6 +68,7 @@ async def promover_host(novo_host_id: int | None, motivo: str) -> None:
     host_id = novo_host_id
     logger.info("novo host id=%d motivo=%s", host_id, motivo)
     await broadcast({"t": "host", "id": host_id})
+    await broadcast({"t": "game", "kills": total_kills, "deaths": total_deaths})
 
 
 async def host_watchdog() -> None:
@@ -112,7 +114,7 @@ async def broadcast(message: dict, excluded: int | None = None) -> None:
 
 
 async def handler(websocket: object) -> None:
-    global game_over, host_id, next_id, total_deaths
+    global game_over, host_id, next_id, total_deaths, total_kills
     request = getattr(websocket, "request", None)
     request_path = getattr(request, "path", None)
     if request_path is None:
@@ -128,6 +130,7 @@ async def handler(websocket: object) -> None:
     was_empty = not clients
     if was_empty:
         total_deaths = 0
+        total_kills = 0
         game_over = False
         dead_players.clear()
         host_id = player_id
@@ -139,6 +142,7 @@ async def handler(websocket: object) -> None:
         "id": player_id,
         "host": player_id == host_id,
         "deaths": total_deaths,
+        "kills": total_kills,
         "players": [other.state() for other_id, other in clients.items()
                     if other_id != player_id],
     })
@@ -193,7 +197,12 @@ async def handler(websocket: object) -> None:
                 if total_deaths >= MAX_DEATHS:
                     game_over = True
                     await broadcast({"t": "game_over", "result": "defeat", "id": player_id})
+            elif message_type == "kill" and player_id == host_id:
+                total_kills += 1
+                logger.debug("abate registrado pelo host id=%d total=%d", player_id, total_kills)
+                await broadcast({"t": "game", "kills": total_kills})
             elif message_type == "game" and player_id == host_id:
+                message["kills"] = total_kills
                 await broadcast(message)
             elif message_type == "game_over" and player_id == host_id:
                 await broadcast(message, excluded=player_id)
@@ -218,6 +227,7 @@ async def handler(websocket: object) -> None:
         if not clients:
             host_id = None
             total_deaths = 0
+            total_kills = 0
             game_over = False
             dead_players.clear()
 

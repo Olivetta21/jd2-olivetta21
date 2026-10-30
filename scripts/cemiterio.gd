@@ -11,6 +11,8 @@ const DEBUG_REPORT_INTERVAL := 2.0
 const MAX_DEATHS := 5
 const RESPAWN_DELAY := 1.0
 const GAME_STATE_INTERVAL := 0.2
+const ENEMIES_PER_DAMAGE_STEP := 5
+const DAMAGE_MULTIPLIER_STEP := 0.25
 
 @export var inimigos: Array[InimigoChance] = []
 
@@ -19,6 +21,7 @@ const GAME_STATE_INTERVAL := 0.2
 @onready var jogador := $jogador
 @onready var texto_vida: Label = $HUD/Vida
 @onready var texto_tempo: Label = $HUD/Tempo
+@onready var texto_inimigos: Label = $HUD/Inimigos
 @onready var posicao_inicial_jogador: Vector2 = jogador.global_position
 
 var abates := 0
@@ -115,6 +118,10 @@ func _process(delta: float) -> void:
 		suavizar_inimigos_remotos(delta)
 
 	texto_vida.text = "Vida: %d Abates: %d" % [jogador.vida, abates]
+	texto_inimigos.text = "Inimigos: %d Dano: x%.2f" % [
+		contar_inimigos(),
+		calcular_multiplicador_dano()
+	]
 	texto_tempo.text = "Tempo: %d Mortes: %d/%d" % [
 		ceil(tempo_restante), mortes, MAX_DEATHS
 	]
@@ -126,6 +133,7 @@ func receber_mensagem(mensagem: Dictionary) -> void:
 		"welcome":
 			meu_id = int(mensagem.get("id", -1))
 			mortes = int(mensagem.get("deaths", mortes))
+			abates = int(mensagem.get("kills", abates))
 			definir_autoridade(bool(mensagem.get("host", false)))
 			for estado in mensagem.get("players", []):
 				adicionar_remoto(estado)
@@ -232,9 +240,22 @@ func finalizar_derrota() -> void:
 	get_tree().change_scene_to_file.call_deferred("res://scenes/derrota.tscn")
 
 func aplicar_ataque_remoto(posicao: Vector2) -> void:
+	var dano_atual := calcular_dano_jogador(1)
 	for inimigo in get_tree().get_nodes_in_group("inimigo"):
 		if not inimigo.morreu and inimigo.global_position.distance_squared_to(posicao) <= 24.0 * 24.0:
-			inimigo.levar_golpe(1)
+			inimigo.levar_golpe(dano_atual)
+
+func contar_inimigos() -> int:
+	if sou_autoridade:
+		return get_tree().get_nodes_in_group("inimigo").size()
+	return inimigos_remotos.size()
+
+func calcular_multiplicador_dano() -> float:
+	var faixas := contar_inimigos() / ENEMIES_PER_DAMAGE_STEP
+	return 1.0 + faixas * DAMAGE_MULTIPLIER_STEP
+
+func calcular_dano_jogador(dano_base: int) -> int:
+	return maxi(1, ceili(float(dano_base) * calcular_multiplicador_dano()))
 
 func enviar(mensagem: Dictionary) -> void:
 	if socket.get_ready_state() == WebSocketPeer.STATE_OPEN:
@@ -387,3 +408,5 @@ func escolher_inimigo() -> PackedScene:
 
 func inimigo_morreu(_inimigo: Node2D) -> void:
 	abates += 1
+	if sou_autoridade:
+		enviar({"t": "kill"})
