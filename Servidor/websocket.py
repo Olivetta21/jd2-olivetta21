@@ -56,6 +56,7 @@ clients: dict[int, Client] = {}
 total_deaths = 0
 game_over = False
 host_id: int | None = None
+dead_players: set[int] = set()
 next_id = 1
 
 
@@ -128,6 +129,7 @@ async def handler(websocket: object) -> None:
     if was_empty:
         total_deaths = 0
         game_over = False
+        dead_players.clear()
         host_id = player_id
     clients[player_id] = client
     logger.info("cliente conectado id=%d caminho=%s jogadores=%d host=%s",
@@ -176,7 +178,10 @@ async def handler(websocket: object) -> None:
                 await broadcast(message, excluded=player_id)
             elif message_type == "damage" and player_id == host_id:
                 await broadcast(message, excluded=player_id)
-            elif message_type == "death" and not game_over:
+            elif message_type == "respawn":
+                dead_players.discard(player_id)
+            elif message_type == "death" and not game_over and player_id not in dead_players:
+                dead_players.add(player_id)
                 total_deaths += 1
                 logger.info("morte registrada id=%d total da partida=%d/%d",
                             player_id, total_deaths, MAX_DEATHS)
@@ -214,6 +219,7 @@ async def handler(websocket: object) -> None:
             host_id = None
             total_deaths = 0
             game_over = False
+            dead_players.clear()
 
 
 async def main() -> None:

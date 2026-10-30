@@ -25,6 +25,7 @@ var abates := 0
 var mortes := 0
 var tempo_restante := 0.0
 var jogo_encerrado := false
+var jogador_aguardando_respawn := false
 var socket := WebSocketPeer.new()
 var meu_id := -1
 var sou_autoridade := false
@@ -186,12 +187,15 @@ func enviar_estado_jogador() -> void:
 	enviar({"t": "player", "x": posicao.x, "y": posicao.y, "dx": direcao.x, "dy": direcao.y})
 
 func jogador_atacou(atacante: Node2D) -> void:
-	if atacante == jogador and not sou_autoridade:
+	if atacante == jogador and not sou_autoridade and not jogador_aguardando_respawn:
 		enviar({"t": "attack", "x": atacante.global_position.x, "y": atacante.global_position.y})
 
 func get_alvo_inimigo(origem: Vector2) -> Node2D:
-	var alvo: Node2D = jogador
-	var distancia := origem.distance_squared_to(jogador.global_position)
+	var alvo: Node2D = null
+	var distancia := INF
+	if not jogador.em_respawn:
+		alvo = jogador
+		distancia = origem.distance_squared_to(jogador.global_position)
 	for remoto in remotos.values():
 		if remoto == null or not is_instance_valid(remoto):
 			continue
@@ -210,12 +214,15 @@ func aplicar_dano_jogador(alvo: Node2D, dano: int) -> void:
 		enviar({"t": "damage", "id": id, "amount": dano})
 
 func jogador_morreu(alvo: Node2D) -> void:
-	if alvo != jogador or jogo_encerrado:
+	if alvo != jogador or jogo_encerrado or jogador_aguardando_respawn:
 		return
+	jogador_aguardando_respawn = true
 	enviar({"t": "death"})
 	await get_tree().create_timer(RESPAWN_DELAY).timeout
 	if not jogo_encerrado and is_instance_valid(jogador):
 		jogador.renascer(posicao_inicial_jogador)
+		jogador_aguardando_respawn = false
+		enviar({"t": "respawn"})
 
 func finalizar_derrota() -> void:
 	if jogo_encerrado:

@@ -20,6 +20,7 @@ enum PlayerState {
 
 var status: PlayerState = PlayerState.IDLE
 var invencivel := false
+var em_respawn := false
 var tempo_no_estado := 0.0
 var dano_do_ataque_aplicado := false
 
@@ -57,6 +58,14 @@ func mudar_estado(novo_estado: PlayerState) -> void:
 			modulate.a = 0.4
 		PlayerState.DEATH:
 			velocity = Vector2.ZERO
+			em_respawn = true
+			set_physics_process(false)
+			collision_layer = 0
+			collision_mask = 0
+			ataque.set_deferred("monitoring", false)
+			var hurtbox := get_node_or_null("Hurtbox") as Area2D
+			if hurtbox != null:
+				hurtbox.set_deferred("monitoring", false)
 			anim_golpe.stop()
 			anim_golpe.visible = false
 
@@ -149,7 +158,7 @@ func aplicar_dano_do_ataque() -> void:
 			alvo.levar_golpe(dano)
 
 func levar_dano(valor: int) -> void:
-	if invencivel:
+	if invencivel or em_respawn or status == PlayerState.DEATH:
 		return
 
 	vida -= valor
@@ -162,6 +171,14 @@ func levar_dano(valor: int) -> void:
 	mudar_estado(PlayerState.HURT)
 
 func renascer(posicao: Vector2) -> void:
+	em_respawn = false
+	set_physics_process(true)
+	collision_layer = 2
+	collision_mask = 3
+	ataque.set_deferred("monitoring", true)
+	var hurtbox := get_node_or_null("Hurtbox") as Area2D
+	if hurtbox != null:
+		hurtbox.set_deferred("monitoring", true)
 	vida = vida_maxima
 	global_position = posicao
 	velocity = Vector2.ZERO
