@@ -227,6 +227,12 @@ async def handler(websocket: object) -> None:
                 await broadcast(message, excluded=player_id)
             elif message_type == "respawn" and client.active:
                 dead_players.discard(player_id)
+                await broadcast({
+                    "t": "notice",
+                    "kind": "respawn",
+                    "id": player_id,
+                    "name": client.name,
+                })
             elif message_type == "death" and client.active and not game_over and player_id not in dead_players:
                 dead_players.add(player_id)
                 total_deaths += 1
@@ -243,7 +249,12 @@ async def handler(websocket: object) -> None:
                     "kills": total_kills,
                     "deaths": total_deaths,
                 })
-                await broadcast({"t": "notice", "kind": "death", "name": client.name})
+                await broadcast({
+                    "t": "notice",
+                    "kind": "death",
+                    "id": player_id,
+                    "name": client.name,
+                })
                 if total_deaths >= MAX_DEATHS:
                     game_over = True
                     await broadcast({"t": "game_over", "result": "defeat", "id": player_id})
@@ -251,6 +262,7 @@ async def handler(websocket: object) -> None:
                 total_kills += 1
                 logger.debug("abate registrado pelo host id=%d total=%d", player_id, total_kills)
                 await broadcast({"t": "game", "kills": total_kills})
+                await broadcast({"t": "notice", "kind": "kill", "kills": total_kills})
             elif message_type == "game" and client.active and player_id == host_id:
                 message["kills"] = total_kills
                 message["deaths"] = total_deaths

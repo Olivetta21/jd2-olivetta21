@@ -9,11 +9,11 @@ const ENEMY_VELOCITY_SMOOTHING := 0.35
 const PLAYER_SNAPSHOT_INTERVAL := 0.05
 const HOST_HEARTBEAT_INTERVAL := 0.5
 const DEBUG_REPORT_INTERVAL := 2.0
-const MAX_DEATHS := 5
-const RESPAWN_DELAY := 1.0
+const MAX_DEATHS := 10
+const RESPAWN_DELAY := 0.5
 const GAME_STATE_INTERVAL := 0.2
 const ENEMIES_PER_DAMAGE_STEP := 5
-const DAMAGE_MULTIPLIER_STEP := 0.25
+const DAMAGE_MULTIPLIER_STEP := 0.2
 
 @export var inimigos: Array[InimigoChance] = []
 
@@ -160,15 +160,10 @@ func receber_mensagem(mensagem: Dictionary) -> void:
 			for estado in mensagem.get("players", []):
 				adicionar_remoto(estado)
 			adicionar_evento("Você entrou na partida.")
-			if mensagem.get("host", false):
-				adicionar_evento("Você iniciou a partida.")
 		"join":
 			adicionar_remoto(mensagem)
-			adicionar_evento("%s entrou." % str(mensagem.get("name", "Jogador")))
 		"leave":
-			var nome_saida := nome_remoto(int(mensagem.get("id", -1)))
 			remover_remoto(int(mensagem.get("id", -1)))
-			adicionar_evento("%s saiu." % nome_saida)
 		"player":
 			if int(mensagem.get("id", -1)) != meu_id:
 				adicionar_ou_atualizar_remoto(mensagem)
@@ -184,7 +179,17 @@ func receber_mensagem(mensagem: Dictionary) -> void:
 				"leave":
 					adicionar_evento("%s saiu." % nome_evento)
 				"death":
-					adicionar_evento("%s morreu." % nome_evento)
+					if int(mensagem.get("id", -1)) == meu_id:
+						adicionar_evento("Você morreu.")
+					else:
+						adicionar_evento("%s morreu." % nome_evento)
+				"respawn":
+					if int(mensagem.get("id", -1)) == meu_id:
+						adicionar_evento("Você renasceu.")
+					else:
+						adicionar_evento("%s renasceu." % nome_evento)
+				"kill":
+					adicionar_evento("Inimigo derrotado! Abates: %d" % int(mensagem.get("kills", abates)))
 		"enemies":
 			if not sou_autoridade:
 				snapshot_inimigos_pendente = mensagem.get("items", [])
@@ -228,6 +233,7 @@ func iniciar_partida() -> void:
 		return
 	partida_iniciada = true
 	relogio.start()
+	adicionar_evento("A partida começou.")
 
 func enviar_estado_jogador() -> void:
 	if meu_id < 0 or not nome_confirmado:

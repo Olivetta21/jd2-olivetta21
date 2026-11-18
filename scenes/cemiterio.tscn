@@ -98,21 +98,21 @@ script = ExtResource("4_controles")
 [node name="Vida" type="Label" parent="HUD" unique_id=344254322]
 offset_right = 40.0
 offset_bottom = 23.0
-theme_override_font_sizes/font_size = 32
+theme_override_font_sizes/font_size = 14
 
 [node name="Tempo" type="Label" parent="HUD" unique_id=1428804076]
-offset_top = 27.0
+offset_top = 16.0
 offset_right = 40.0
-offset_bottom = 72.0
-theme_override_font_sizes/font_size = 32
+offset_bottom = 61.0
+theme_override_font_sizes/font_size = 14
 
 [node name="Inimigos" type="Label" parent="HUD" unique_id=1117006349]
-offset_top = 60.0
+offset_top = 33.0
 offset_right = 300.0
-offset_bottom = 91.0
-theme_override_font_sizes/font_size = 22
+offset_bottom = 64.0
+theme_override_font_sizes/font_size = 14
 
-[node name="DicaControles" type="Label" parent="HUD"]
+[node name="DicaControles" type="Label" parent="HUD" unique_id=1981727304]
 visible = false
 offset_left = 180.0
 offset_top = 105.0
@@ -122,13 +122,13 @@ theme_override_colors/font_color = Color(1, 1, 1, 0.9)
 theme_override_font_sizes/font_size = 20
 horizontal_alignment = 1
 
-[node name="RegistroEventos" type="Label" parent="HUD"]
+[node name="RegistroEventos" type="Label" parent="HUD" unique_id=807276454]
 offset_left = 8.0
 offset_top = 300.0
 offset_right = 260.0
 offset_bottom = 378.0
 theme_override_colors/font_color = Color(1, 1, 1, 0.65)
-theme_override_font_sizes/font_size = 13
+theme_override_font_sizes/font_size = 12
 
 [connection signal="timeout" from="Horda" to="." method="_on_horda_timeout"]
 [connection signal="timeout" from="Relogio" to="." method="_on_relogio_timeout"]

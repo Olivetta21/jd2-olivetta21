@@ -15,6 +15,7 @@ func _ready() -> void:
 	anim.play("baixo")
 	anim_ataque.animation_finished.connect(_on_ataque_finished)
 	anim_ataque.visible = false
+	texto_nome.add_theme_font_size_override("font_size", 8)
 
 func get_nome() -> String:
 	return nome

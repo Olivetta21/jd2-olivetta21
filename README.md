@@ -41,8 +41,8 @@ Ao entrar, o jogador informa seu nome antes de aparecer no jogo. O nome é
 exibido acima dos jogadores remotos, e os clientes também reproduzem a
 animação de ataque dos demais jogadores.
 
-O HUD exibe discretamente as últimas entradas, saídas e mortes dos jogadores
-ativos.
+O HUD exibe discretamente os últimos acontecimentos da partida: início,
+entradas e saídas, mortes, renascimentos e abates de inimigos.
 
 Cada jogador possui vida própria, mas as mortes são contabilizadas em um
 contador global da partida. Ao morrer, o jogador renasce na posição inicial
