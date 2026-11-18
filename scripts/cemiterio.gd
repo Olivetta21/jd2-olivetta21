@@ -10,25 +10,37 @@ extends Node2D
 
 var abates := 0
 
+func _ready() -> void:
+	print("[JOGO] Cemiterio iniciado")
+	print("[JOGO] Tempo restante: ", ceil(relogio.time_left), " segundos")
+	print("[JOGO] Vida inicial: ", jogador.vida)
+
 func _process(_delta: float) -> void:
 	texto_vida.text = "Vida: %d Abates: %d" % [jogador.vida, abates]
 	texto_tempo.text = "Tempo: %d" % ceil(relogio.time_left)
 
 func _on_horda_timeout() -> void:
 	var cena_inimigo := escolher_inimigo()
+	if cena_inimigo == null:
+		push_error("[JOGO] Nenhuma cena de inimigo foi sorteada")
+		return
 	var inimigo := cena_inimigo.instantiate()
 	inimigo.global_position = $Nascedouros.get_children().pick_random().global_position
 	add_child(inimigo)
+	print("[JOGO] Inimigo criado: ", inimigo.name, " na posicao ", inimigo.global_position)
 	# A horda aperta: cada inimigo chega um pouco mais cedo que o anterior.
 	horda.wait_time = max(0.5, horda.wait_time * 0.95)
+	print("[JOGO] Proxima horda em ", snapped(horda.wait_time, 0.01), " segundos")
 
 func _on_relogio_timeout() -> void:
 	vencer()
 	
 func vencer() -> void:
+	print("[JOGO] Vitoria! Abates: ", abates)
 	get_tree().change_scene_to_file.call_deferred("res://scenes/vitoria.tscn")
 
 func perder() -> void:
+	print("[JOGO] Derrota! Vida: ", jogador.vida, " | Abates: ", abates)
 	get_tree().change_scene_to_file.call_deferred("res://scenes/derrota.tscn")
 
 func escolher_inimigo() -> PackedScene:
@@ -51,3 +63,4 @@ func escolher_inimigo() -> PackedScene:
 
 func inimigo_morreu(_inimigo: Node2D) -> void:
 	abates += 1
+	print("[JOGO] Abate registrado | Total: ", abates)

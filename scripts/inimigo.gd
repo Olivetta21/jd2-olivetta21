@@ -22,9 +22,10 @@ var velocidade_arremesso := Vector2.ZERO
 var morreu := false
 var tempo_no_estado := 0.0
 
-const TEMPO_ATAQUE := 0.4
+const TEMPO_ATAQUE := 0.01
 
 func _ready() -> void:
+	print("[INIMIGO] ", name, " nasceu na posicao ", global_position)
 	anim.stop()
 	mudar_estado(EnemyState.IDLE)
 
@@ -33,6 +34,7 @@ func mudar_estado(novo_estado: EnemyState) -> void:
 		return
 	status = novo_estado
 	tempo_no_estado = 0.0
+	print("[INIMIGO] ", name, " Estado: ", EnemyState.keys()[novo_estado])
 
 	match status:
 		EnemyState.IDLE:
@@ -89,6 +91,7 @@ func estado_atacando(delta: float) -> void:
 	if hurtbox == null or not hurtbox.get_overlapping_bodies().has(self):
 		mudar_estado(EnemyState.IDLE)
 	elif tempo_no_estado >= TEMPO_ATAQUE:
+		print("[INIMIGO] ", name, " atacou o jogador")
 		jogador.call("levar_dano", dano)
 		tempo_no_estado = 0.0
 
@@ -103,6 +106,7 @@ func levar_golpe(dano_recebido: int) -> void:
 		return
 
 	vida -= dano_recebido
+	print("[INIMIGO] ", name, " recebeu ", dano_recebido, " de dano | Vida restante: ", vida)
 	var jogador_atual := get_tree().get_first_node_in_group("player") as Node2D
 	if jogador_atual != null:
 		var direcao_arremesso := jogador_atual.global_position.direction_to(global_position)
@@ -111,6 +115,7 @@ func levar_golpe(dano_recebido: int) -> void:
 
 	if vida <= 0:
 		morreu = true
+		print("[INIMIGO] ", name, " morreu")
 		mudar_estado(EnemyState.DEATH)
 		get_tree().current_scene.inimigo_morreu(self)
 		await get_tree().create_timer(atraso_morte).timeout

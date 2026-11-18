@@ -25,6 +25,7 @@ var dano_do_ataque_aplicado := false
 const TEMPO_HURT := 1.0
 
 func _ready() -> void:
+	print("[JOGADOR] Inicializado na posicao ", global_position, " | Vida: ", vida)
 	anim.stop()
 	anim_golpe.stop()
 	anim_golpe.visible = false
@@ -37,6 +38,7 @@ func mudar_estado(novo_estado: PlayerState) -> void:
 
 	status = novo_estado
 	tempo_no_estado = 0.0
+	print("[JOGADOR] Estado: ", PlayerState.keys()[novo_estado])
 
 	match status:
 		PlayerState.IDLE:
@@ -140,15 +142,20 @@ func ataque_solicitado() -> bool:
 	return controles_moveis != null and controles_moveis.consume_attack()
 
 func aplicar_dano_do_ataque() -> void:
+	var inimigos_acertados := 0
 	for alvo in ataque.get_overlapping_bodies():
 		if alvo.is_in_group("inimigo") and alvo.has_method("levar_golpe"):
 			alvo.levar_golpe(dano)
+			inimigos_acertados += 1
+	print("[JOGADOR] Ataque realizado | Inimigos acertados: ", inimigos_acertados)
 
 func levar_dano(valor: int) -> void:
 	if invencivel:
+		print("[JOGADOR] Dano ignorado (invencivel)")
 		return
 
 	vida -= valor
+	print("[JOGADOR] Recebeu ", valor, " de dano | Vida restante: ", vida)
 	if vida <= 0:
 		mudar_estado(PlayerState.DEATH)
 		get_tree().current_scene.perder()
