@@ -16,7 +16,7 @@ from websockets.exceptions import ConnectionClosed
 from websockets.server import serve
 
 MAX_PLAYERS = 40
-MAX_DEATHS = 5
+MAX_DEATHS = 10
 HOST_TIMEOUT_SECONDS = 4.0
 HOST_WATCHDOG_INTERVAL = 1.0
 PATH = "/ws/cemiterio"

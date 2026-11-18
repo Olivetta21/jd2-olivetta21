@@ -22,7 +22,7 @@ var morreu := false
 var tempo_no_estado := 0.0
 var jogador: Node2D
 
-const TEMPO_ATAQUE := 0.01
+const TEMPO_ATAQUE := 0.1
 
 func _ready() -> void:
 	anim.stop()
